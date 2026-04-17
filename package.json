@@ -1,13 +1,14 @@
 {
-  "name": "neon-pulse-2026",
-  "version": "1.1.0",
-  "description": "Cyberpunk Quiz Protocol",
+  "name": "neon-pulse",
+  "version": "1.0.0",
+  "description": "Cyber Quiz",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.2",
+    "axios": "^1.6.2"
   }
 }
