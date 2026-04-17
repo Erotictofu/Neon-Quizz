@@ -32,14 +32,16 @@
         .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         button {
             background: rgba(0, 242, 255, 0.03); color: var(--neon-blue); border: 1px solid var(--neon-blue);
-            padding: 15px; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.3s;
+            padding: 15px; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.2s;
         }
+        button:hover:not(:disabled) { background: rgba(0, 242, 255, 0.1); }
         button:disabled { cursor: default; opacity: 1; color: #fff; }
         button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: var(--neon-green) !important; box-shadow: 0 0 20px var(--neon-green); }
         button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: var(--neon-pink) !important; box-shadow: 0 0 20px var(--neon-pink); }
+        #score-display { margin-top: 25px; font-family: 'Orbitron'; color: var(--neon-pink); font-size: 1.5rem; }
         .hidden { display: none; }
         #q-info { font-family: 'Orbitron'; font-size: 0.8rem; color: var(--neon-blue); margin-bottom: 10px; }
-        .crown { font-size: 4rem; display: block; filter: drop-shadow(0 0 15px gold); }
+        .crown { font-size: 4rem; display: block; margin-bottom: 10px; filter: drop-shadow(0 0 15px gold); }
     </style>
 </head>
 <body>
@@ -51,30 +53,34 @@
         <h1>NEON PULSE</h1>
         <div id="login-zone">
             <input type="text" id="username-input" placeholder="CODE NAME..." maxlength="12">
-            <button onclick="joinLobby()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">REJOINDRE</button>
+            <button onclick="joinLobby()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">INITIALISER L'ACCÈS</button>
         </div>
         <div id="lobby-zone" class="hidden">
-            <p>JOUEURS :</p>
+            <p style="color:var(--neon-blue)">SYSTÈMES CONNECTÉS :</p>
             <div id="lobby-list" style="margin:20px 0; color:var(--neon-green)"></div>
-            <button id="ready-btn" onclick="sendReady()" style="width:100%; border-color: var(--neon-green); color: var(--neon-green);">PRÊT</button>
+            <button id="ready-btn" onclick="sendReady()" style="width:100%; border-color: var(--neon-green); color: var(--neon-green);">PRÊT POUR SYNCHRO</button>
         </div>
     </div>
 
     <div id="game-screen" class="hidden">
-        <div id="q-info">FLUX : <span id="q-num">1</span>/50</div>
-        <div id="question" style="margin-bottom:20px; font-size:1.2rem; min-height: 60px;">...</div>
+        <div id="q-info">TRANSMISSION <span id="q-num">1</span>/50</div>
+        <div id="question" style="margin-bottom:20px; font-size:1.2rem; min-height: 60px;">RECEPTION DU SIGNAL...</div>
         <div id="options" class="btn-stack"></div>
-        <div id="score-display" style="margin-top:20px; font-family:'Orbitron'; color:var(--neon-pink)">XP: <span id="score-val">0000</span></div>
+        <div id="score-display">XP: <span id="score-val">0000</span></div>
     </div>
 
     <div id="winner-screen" class="hidden">
         <span class="crown">👑</span>
-        <h2 style="color:gold;">WINNER</h2>
+        <h2 style="color:gold; text-shadow: 0 0 10px gold;">DOMINATION DU RÉSEAU</h2>
         <h1 id="winner-name" style="color:var(--neon-blue)">---</h1>
-        <div id="final-leaderboard" style="margin-top:20px; text-align:left;"></div>
-        <button onclick="location.reload()" style="margin-top:30px; border-color:var(--neon-pink); color:var(--neon-pink);">REJOUER</button>
+        <div id="final-leaderboard" style="margin-top:20px; text-align:left; font-size:0.9rem;"></div>
+        <button onclick="location.reload()" style="margin-top:30px; border-color:var(--neon-pink); color:var(--neon-pink);">RECONNECTER</button>
     </div>
 </div>
+
+<audio id="bgm" loop>
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
+</audio>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -83,15 +89,22 @@
 
     function joinLobby() {
         const input = document.getElementById("username-input");
-        const name = input.value.trim().toUpperCase() || "USER_" + Math.floor(Math.random()*999);
+        const name = input.value.trim().toUpperCase() || "INT_" + Math.floor(Math.random()*999);
+        
+        // Fix Musique : Jouée au clic utilisateur
+        const bgm = document.getElementById("bgm");
+        bgm.volume = 0.2;
+        bgm.play().catch(() => console.log("Audio en attente..."));
+
         document.getElementById("login-zone").classList.add("hidden");
         document.getElementById("lobby-zone").classList.remove("hidden");
         socket.emit('joinGame', name);
     }
 
     function sendReady() {
-        document.getElementById("ready-btn").disabled = true;
-        document.getElementById("ready-btn").innerText = "ATTENTE...";
+        const btn = document.getElementById("ready-btn");
+        btn.disabled = true;
+        btn.innerText = "SYNCHRONISATION...";
         socket.emit('playerReady');
     }
 
@@ -110,6 +123,7 @@
         document.getElementById("question").innerText = qData.text;
         const container = document.getElementById("options");
         container.innerHTML = "";
+        
         qData.choices.forEach(choice => {
             const btn = document.createElement("button");
             btn.innerText = choice;
@@ -131,15 +145,11 @@
     function reveal(clickedBtn, isCorrect) {
         document.querySelectorAll('#options button').forEach(b => {
             b.disabled = true;
-            // Correction ici : On affiche TOUJOURS le vert sur la bonne réponse
-            if (b.innerText === currentCorrectAnswer) {
-                b.classList.add('correct');
-            }
+            // Affiche la bonne réponse en vert quoi qu'il arrive
+            if (b.innerText === currentCorrectAnswer) b.classList.add('correct');
         });
-        // Si le bouton cliqué est faux, on le met en rouge
-        if (clickedBtn && !isCorrect) {
-            clickedBtn.classList.add('wrong');
-        }
+        // Si le joueur s'est trompé, affiche son bouton en rouge
+        if (clickedBtn && !isCorrect) clickedBtn.classList.add('wrong');
     }
 
     socket.on('yourScore', (score) => {
@@ -151,7 +161,7 @@
         document.getElementById("winner-screen").classList.remove("hidden");
         document.getElementById("winner-name").innerText = data.winner;
         document.getElementById("final-leaderboard").innerHTML = data.leaderboard
-            .map((p, i) => `<div>${i+1}. ${p.username} - ${p.score} XP</div>`).join('');
+            .map((p, i) => `<div>#${i+1} ${p.username} : ${p.score} XP</div>`).join('');
     });
 </script>
 </body>
