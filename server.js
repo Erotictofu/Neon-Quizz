@@ -13,7 +13,7 @@ app.get('/', (req, res) => {
 
 let players = {};
 let currentQuestion = null;
-let timeLeft = 15; // Passage à 15 secondes
+let timeLeft = 15;
 let timerInterval = null;
 let gameStarted = false;
 
@@ -42,7 +42,7 @@ function startTimer() {
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             io.emit('timeUp', currentQuestion.correct);
-            setTimeout(chargerNouvelleQuestion, 3000);
+            setTimeout(chargerNouvelleQuestion, 4000);
         }
     }, 1000);
 }
@@ -59,12 +59,11 @@ io.on('connection', (socket) => {
             const allPlayers = Object.values(players);
             io.emit('updateLobby', allPlayers);
 
-            // Si tout le monde est prêt et qu'il y a au moins 2 joueurs (ou 1 pour tester)
             const readyCount = allPlayers.filter(p => p.ready).length;
-            if (readyCount === allPlayers.length && !gameStarted) {
+            if (readyCount === allPlayers.length && allPlayers.length > 0 && !gameStarted) {
                 gameStarted = true;
                 io.emit('gameStart');
-                chargerNouvelleQuestion();
+                setTimeout(chargerNouvelleQuestion, 2000);
             }
         }
     });
@@ -79,9 +78,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        delete players[socket.id];
-        io.emit('updateLobby', Object.values(players));
-        if (Object.keys(players).length === 0) gameStarted = false;
+        if (players[socket.id]) {
+            delete players[socket.id];
+            io.emit('updateLobby', Object.values(players));
+            if (Object.keys(players).length === 0) gameStarted = false;
+        }
     });
 });
 
