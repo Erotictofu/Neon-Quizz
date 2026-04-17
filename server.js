@@ -5,10 +5,11 @@ const io = require('socket.io')(http);
 const axios = require('axios');
 const path = require('path');
 
+// On dit au serveur que les fichiers sont à la racine
 app.use(express.static(__dirname));
 
+// CETTE LIGNE EST LA CORRECTION : on supprime le dossier '/src/'
 app.get('/', (req, res) => {
-    // Cette ligne est la clé : on enlève '/src/'
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
