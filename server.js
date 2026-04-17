@@ -1,104 +1,84 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
-});
+const io = require('socket.io')(http);
+const axios = require('axios');
 const path = require('path');
 
-// Configuration du dossier public
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 let players = {};
-let gameActive = false;
-let currentQuestionIndex = 0;
-let gameQuestions = [];
-let timerValue = 15;
-let timerInterval;
+let currentQuestion = null;
+let gameStarted = false;
+let questionCount = 0;
+let timerInterval = null;
+let timeLeft = 15;
 
-const questionBank = [
-    { text: "SOURCE DU SIGNAL : ANNÉE DU PROTOCOLE ?", choices: ["2024", "2025", "2026", "2077"], correct: "2026" },
-    { text: "LANGAGE DE SYNTHÈSE NEURAL-LINK ?", choices: ["Python", "C++", "JavaScript", "Assembly"], correct: "javascript" },
-    { text: "DÉBIT DE LA GRILLE SPRAWL ?", choices: ["1 Gb/s", "10 Tb/s", "100 Pb/s", "Lumière"], correct: "100 pb/s" },
-    { text: "PROTOCOLE DE FLUX NEON ?", choices: ["TCP/IP", "UDP", "NEURAL-7", "SSL"], correct: "neural-7" },
-    { text: "COULEUR DU SECTEUR 01 ?", choices: ["Cyan", "Magenta", "Vert", "Jaune"], correct: "cyan" }
-];
+async function nextQuestion() {
+    if (questionCount >= 50) {
+        const winner = Object.values(players).sort((a,b) => b.score - a.score)[0];
+        io.emit('gameOver', winner);
+        gameStarted = false;
+        return;
+    }
+    try {
+        const res = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
+        const q = res.data[0];
+        questionCount++;
+        
+        currentQuestion = {
+            text: q.question.text,
+            choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
+            correct: q.correctAnswer,
+            number: questionCount,
+            startTime: Date.now()
+        };
 
-function shuffle(array) {
-    return array.sort(() => Math.random() - 0.5);
+        timeLeft = 15;
+        io.emit('nextQuestion', currentQuestion);
+        
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            io.emit('timerUpdate', timeLeft);
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                io.emit('timeUp', currentQuestion.correct);
+                setTimeout(nextQuestion, 4000);
+            }
+        }, 1000);
+    } catch (e) {
+        console.log("Erreur API, nouvelle tentative...");
+        setTimeout(nextQuestion, 2000);
+    }
 }
 
 io.on('connection', (socket) => {
-    socket.on('joinGame', (username) => {
+    socket.on('joinGame', (name) => {
         const isHost = Object.keys(players).length === 0;
-        players[socket.id] = { username, score: 0, streak: 0, isHost };
+        players[socket.id] = { username: name, score: 0, streak: 0, isHost: isHost };
         socket.emit('hostStatus', isHost);
         io.emit('updateLobby', Object.values(players));
     });
 
     socket.on('startGameRequest', () => {
-        if (players[socket.id]?.isHost && !gameActive) {
-            gameActive = true;
-            currentQuestionIndex = 0;
-            gameQuestions = shuffle([...questionBank]).slice(0, 3);
+        // Sécurité : n'importe quel joueur peut forcer le start si l'hôte bugue, 
+        // ou on restreint à players[socket.id].isHost
+        if (!gameStarted) {
+            gameStarted = true;
+            questionCount = 0;
             io.emit('gameStart');
-            sendQuestion();
+            nextQuestion();
         }
     });
 
     socket.on('submitAnswer', (data) => {
         const p = players[socket.id];
-        if (p) {
-            if (data.isCorrect) {
-                p.streak++;
-                p.score += 100 + (p.streak * 50);
-            } else {
-                p.streak = 0;
-            }
-            socket.emit('yourScore', p.score);
-            socket.emit('feedback', { streak: p.streak });
-            io.emit('updateLobby', Object.values(players));
-        }
-    });
+        if (!p || !currentQuestion) return;
 
-    socket.on('disconnect', () => {
-        const wasHost = players[socket.id]?.isHost;
-        delete players[socket.id];
-        if (wasHost && Object.keys(players).length > 0) {
-            const nextId = Object.keys(players)[0];
-            players[nextId].isHost = true;
-            io.to(nextId).emit('hostStatus', true);
-        }
-        io.emit('updateLobby', Object.values(players));
-    });
-});
-
-function sendQuestion() {
-    if (currentQuestionIndex < gameQuestions.length) {
-        io.emit('nextQuestion', gameQuestions[currentQuestionIndex]);
-        startTimer();
-    } else {
-        gameActive = false;
-        const finalScores = Object.values(players).sort((a,b) => b.score - a.score);
-        io.emit('gameOver', finalScores);
-    }
-}
-
-function startTimer() {
-    timerValue = 15;
-    clearInterval(timerInterval);
-    io.emit('timerUpdate', timerValue);
-    timerInterval = setInterval(() => {
-        timerValue--;
-        io.emit('timerUpdate', timerValue);
-        if (timerValue <= 0) {
-            clearInterval(timerInterval);
-            io.emit('timeUp', gameQuestions[currentQuestionIndex].correct);
-            currentQuestionIndex++;
-            setTimeout(sendQuestion, 3000);
-        }
-    }, 1000);
-}
-
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, "0.0.0.0", () => console.log(`SYSTEM ONLINE: ${PORT}`));
+        if (data.isCorrect) {
+            const speed = Math.max(0, 15 - (Date.now() - currentQuestion.startTime)/1000);
+            let pts = Math.round(150 + (speed * 10));
+            p.streak++;
+            if(p.streak >= 3) pts *= 1.5;
+            p.score += Math.round(pts);
