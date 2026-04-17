@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinity Pulse - Ultra Neon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020008; --panel: #050510; --neon-blue: #00f2ff;
+            --neon-pink: #ff0055; --neon-green: #39ff14; --text: #e0e0ff;
+        }
+        body {
+            font-family: 'Rajdhani', sans-serif; background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% 50%, #101025 0%, #020008 100%);
+            color: var(--text); display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; overflow: hidden;
+        }
+        #quiz-container {
+            background: var(--panel); padding: 2.5rem; border-radius: 10px;
+            border: 2px solid var(--neon-blue); box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            width: 90%; max-width: 650px; text-align: center; position: relative;
+        }
+        #timer-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); position: absolute; top: 0; left: 0; }
+        #timer-bar { width: 100%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 1s linear; }
+        h1 { font-family: 'Orbitron', sans-serif; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); }
+        #username-input {
+            background: rgba(0, 242, 255, 0.05); border: 1px solid var(--neon-blue);
+            padding: 15px; width: 80%; color: var(--neon-blue); font-family: 'Orbitron';
+            text-align: center; outline: none; text-transform: uppercase; margin-bottom: 25px;
+        }
+        .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        button {
+            background: rgba(0, 242, 255, 0.03); color: var(--neon-blue); border: 1px solid var(--neon-blue);
+            padding: 20px; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase;
+        }
+        button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: var(--neon-green) !important; box-shadow: 0 0 20px var(--neon-green); }
+        button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: var(--neon-pink) !important; box-shadow: 0 0 20px var(--neon-pink); }
+        #score-display { margin-top: 25px; font-family: 'Orbitron'; color: var(--neon-pink); font-size: 1.5rem; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <div id="timer-container"><div id="timer-bar"></div></div>
+
+    <div id="start-screen">
+        <h1>NEON PULSE</h1>
+        <input type="text" id="username-input" placeholder="CODE NAME..." maxlength="12">
+        <button id="start-btn" onclick="initGame()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">INITIALISER</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div id="question">SYNCHRONISATION...</div>
+        <div id="options" class="btn-stack"></div>
+        <div id="score-display">XP: <span id="score-val">0000</span></div>
+        <div id="leaderboard" style="margin-top:20px; text-align:left; font-size:0.8rem; color:var(--neon-blue);">
+            <strong>FLUX RÉSEAU :</strong> <div id="player-list"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop><source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" type="audio/mpeg"></audio>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let myUsername = "";
+    let currentCorrectAnswer = "";
+
+    // DÉCLARATION DE LA FONCTION
+    function initGame() {
+        console.log("Initialisation demandée...");
+        const input = document.getElementById("username-input");
+        myUsername = input.value.trim().toUpperCase() || "INT_" + Math.floor(Math.random()*999);
+
+        // Audio
+        const bgm = document.getElementById("bgm");
+        bgm.volume = 0.2;
+        bgm.play().catch(e => console.log("Audio bloqué"));
+
+        document.getElementById("start-screen").classList.add("hidden");
+        document.getElementById("game-screen").classList.remove("hidden");
+
+        socket.emit('joinGame', myUsername);
+    }
+
+    // Gestion de la touche Entrée
+    document.getElementById("username-input").addEventListener("keyup", (e) => {
+        if (e.key === "Enter") initGame();
+    });
+
+    socket.on('nextQuestion', (qData) => {
+        currentCorrectAnswer = qData.correct;
+        document.getElementById("question").innerText = qData.text;
+        const container = document.getElementById("options");
+        container.innerHTML = "";
+
+        qData.choices.forEach(choice => {
+            const btn = document.createElement("button");
+            btn.innerText = choice;
+            btn.onclick = () => {
+                const isCorrect = (choice === qData.correct);
+                reveal(btn, isCorrect);
+                socket.emit('submitAnswer', { isCorrect: isCorrect });
+            };
+            container.appendChild(btn);
+        });
+    });
+
+    socket.on('timerUpdate', (time) => {
+        const percent = (time / 30) * 100;
+        document.getElementById("timer-bar").style.width = percent + "%";
+    });
+
+    socket.on('timeUp', (correct) => {
+        reveal(null, false);
+    });
+
+    function reveal(clickedBtn, isCorrect) {
+        const btns = document.querySelectorAll('#options button');
+        btns.forEach(b => {
+            b.disabled = true;
+            if (b.innerText === currentCorrectAnswer) b.classList.add('correct');
+        });
+        if (clickedBtn && !isCorrect) clickedBtn.classList.add('wrong');
+    }
+
+    socket.on('updateLeaderboard', (players) => {
+        const list = document.getElementById("player-list");
+        list.innerHTML = players.map((p, i) => `<div>[${i+1}] ${p.username} : ${p.score} XP</div>`).join('');
+    });
+
+    socket.on('yourScore', (score) => {
+        document.getElementById("score-val").innerText = score.toString().padStart(4, '0');
+    });
+</script>
+</body>
+</html>

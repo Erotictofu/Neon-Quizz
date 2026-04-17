@@ -1,0 +1,14 @@
+{
+  "name": "neon-pulse-quiz",
+  "version": "1.0.0",
+  "description": "Multiplayer Neon Quiz",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "axios": "^1.6.0"
+  }
+}
