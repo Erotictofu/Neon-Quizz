@@ -6,6 +6,7 @@ const io = require('socket.io')(http, {
 });
 const path = require('path');
 
+// Configuration du dossier public
 app.use(express.static(path.join(__dirname, 'public')));
 
 let players = {};
@@ -16,11 +17,11 @@ let timerValue = 15;
 let timerInterval;
 
 const questionBank = [
-    { text: "SOURCE DU SIGNAL DETECTÉE : ANNÉE DU PROTOCOLE ?", choices: ["2024", "2025", "2026", "2077"], correct: "2026" },
-    { text: "LANGAGE DE SYNTHÈSE DES NEURAL-LINKS ?", choices: ["Python", "C++", "JavaScript", "Assembly"], correct: "javascript" },
-    { text: "VITESSE DE TRANSMISSION DE LA GRILLE ?", choices: ["1 Gb/s", "10 Tb/s", "100 Pb/s", "Lumière"], correct: "100 pb/s" },
-    { text: "QUEL PROTOCOLE GÈRE LE FLUX NEON ?", choices: ["TCP/IP", "UDP", "NEURAL-7", "SSL"], correct: "neural-7" },
-    { text: "COULEUR DOMINANTE DU SECTEUR 01 ?", choices: ["Cyan", "Magenta", "Vert", "Jaune"], correct: "cyan" }
+    { text: "SOURCE DU SIGNAL : ANNÉE DU PROTOCOLE ?", choices: ["2024", "2025", "2026", "2077"], correct: "2026" },
+    { text: "LANGAGE DE SYNTHÈSE NEURAL-LINK ?", choices: ["Python", "C++", "JavaScript", "Assembly"], correct: "javascript" },
+    { text: "DÉBIT DE LA GRILLE SPRAWL ?", choices: ["1 Gb/s", "10 Tb/s", "100 Pb/s", "Lumière"], correct: "100 pb/s" },
+    { text: "PROTOCOLE DE FLUX NEON ?", choices: ["TCP/IP", "UDP", "NEURAL-7", "SSL"], correct: "neural-7" },
+    { text: "COULEUR DU SECTEUR 01 ?", choices: ["Cyan", "Magenta", "Vert", "Jaune"], correct: "cyan" }
 ];
 
 function shuffle(array) {
@@ -39,8 +40,7 @@ io.on('connection', (socket) => {
         if (players[socket.id]?.isHost && !gameActive) {
             gameActive = true;
             currentQuestionIndex = 0;
-            // On pioche 3 questions au hasard pour cette session
-            gameQuestions = shuffle([...questionBank]).slice(0, 3); 
+            gameQuestions = shuffle([...questionBank]).slice(0, 3);
             io.emit('gameStart');
             sendQuestion();
         }
@@ -48,14 +48,17 @@ io.on('connection', (socket) => {
 
     socket.on('submitAnswer', (data) => {
         const p = players[socket.id];
-        if (p && data.isCorrect) {
-            p.streak++;
-            p.score += 100 + (p.streak * 50);
-        } else if (p) {
-            p.streak = 0;
+        if (p) {
+            if (data.isCorrect) {
+                p.streak++;
+                p.score += 100 + (p.streak * 50);
+            } else {
+                p.streak = 0;
+            }
+            socket.emit('yourScore', p.score);
+            socket.emit('feedback', { streak: p.streak });
+            io.emit('updateLobby', Object.values(players));
         }
-        socket.emit('yourScore', p?.score || 0);
-        socket.emit('feedback', { streak: p?.streak || 0 });
     });
 
     socket.on('disconnect', () => {
@@ -98,4 +101,4 @@ function startTimer() {
 }
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(`SYSTEM ONLINE: ${PORT}`));
+http.listen(PORT, "0.0.0.0", () => console.log(`SYSTEM ONLINE: ${PORT}`));
