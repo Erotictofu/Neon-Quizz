@@ -2,145 +2,147 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>NEON PULSE // REBOOT</title>
+    <title>NEON PULSE // COMPETITIVE</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    
-    <script>
-        // ON DÉFINIT LES FONCTIONS AVANT TOUT LE RESTE
-        let socket;
-        let currentAns = "";
-
-        // Initialisation immédiate au chargement de la page
-        window.onload = function() {
-            socket = io();
-            
-            socket.on('connect', () => {
-                const status = document.getElementById('status');
-                if(status) {
-                    status.innerText = "[ SYSTEM READY ]";
-                    status.style.color = "#39ff14";
-                }
-            });
-
-            // Écouteurs de messages
-            socket.on('hostStatus', (isHost) => {
-                const btn = document.getElementById('start-btn');
-                if(btn) btn.classList.toggle('hidden', !isHost);
-            });
-
-            socket.on('updateLobby', (players) => {
-                const list = document.getElementById('player-list');
-                if(list) list.innerHTML = players.map(p => `<div>> ${p.username}: ${p.score}XP</div>`).join('');
-            });
-
-            socket.on('gameStart', () => {
-                document.getElementById('view-join').classList.add('hidden');
-                document.getElementById('view-lobby').classList.add('hidden');
-                document.getElementById('view-game').classList.remove('hidden');
-            });
-
-            socket.on('nextQuestion', (q) => {
-                currentAns = q.correct;
-                document.getElementById('q-text').innerText = q.text;
-                const box = document.getElementById('choices-box');
-                box.innerHTML = "";
-                q.choices.forEach(c => {
-                    const b = document.createElement('button');
-                    b.innerText = c;
-                    b.className = "choice-btn";
-                    b.onclick = () => {
-                        const ok = c.trim().toLowerCase() === currentAns.trim().toLowerCase();
-                        socket.emit('submitAnswer', { isCorrect: ok });
-                        reveal(b);
-                    };
-                    box.appendChild(b);
-                });
-            });
-
-            socket.on('timerUpdate', (t) => {
-                document.getElementById('timer-bar').style.width = (t/15)*100 + "%";
-            });
-
-            socket.on('timeUp', (ans) => {
-                if(ans) currentAns = ans;
-                reveal(null);
-            });
-
-            socket.on('yourScore', (s) => {
-                document.getElementById('xp').innerText = s.toString().padStart(4, '0');
-            });
-        };
-
-        // LES DEUX FONCTIONS CLÉS
-        function join() {
-            console.log("Exécution de join()...");
-            const nick = document.getElementById('nick').value || "USER";
-            socket.emit('joinGame', nick);
-            document.getElementById('view-join').classList.add('hidden');
-            document.getElementById('view-lobby').classList.remove('hidden');
-            
-            // Son
-            const m = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3");
-            m.volume = 0.1;
-            m.play().catch(() => {});
-        }
-
-        function launch() {
-            socket.emit('startGameRequest');
-        }
-
-        function reveal(clicked) {
-            document.querySelectorAll('.choice-btn').forEach(b => {
-                b.disabled = true;
-                if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) {
-                    b.style.background = "#39ff14";
-                    b.style.color = "#000";
-                } else if(b === clicked) {
-                    b.style.background = "#ff0055";
-                }
-            });
-        }
-    </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --neon: #00f2ff; --pink: #ff0055; --bg: #020008; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani'; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #app { width: 90%; max-width: 600px; border: 2px solid var(--neon); padding: 40px; text-align: center; position: relative; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px var(--neon); }
+        :root { --neon: #00f2ff; --pink: #ff0055; --green: #39ff14; --bg: #020008; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani'; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Layout */
+        #game-container { flex: 3; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid rgba(0,242,255,0.2); }
+        #sidebar { flex: 1; background: rgba(0,0,0,0.5); padding: 20px; display: flex; flex-direction: column; }
+        
+        .grid { position: fixed; width: 100%; height: 100%; top: 0; left: 0; background-image: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.05; transform: perspective(500px) rotateX(60deg); z-index: -1; }
+
+        /* Éléments UI */
+        #app-box { width: 80%; text-align: center; background: rgba(5,5,20,0.9); padding: 30px; border: 2px solid var(--neon); box-shadow: 0 0 30px rgba(0,242,255,0.2); }
         .hidden { display: none !important; }
-        h1 { font-family: 'Orbitron'; font-size: 3rem; color: var(--neon); margin: 0; }
-        input { background: #000; border: 1px solid var(--neon); color: #fff; padding: 15px; width: 80%; text-align: center; margin-top: 20px; font-family: 'Orbitron'; }
-        button { background: none; border: 2px solid var(--neon); color: var(--neon); padding: 15px 30px; cursor: pointer; font-family: 'Orbitron'; margin-top: 20px; transition: 0.3s; }
-        button:hover { background: var(--neon); color: #000; }
-        .choice-btn { width: 100%; margin: 5px 0; }
+        h1 { font-family: 'Orbitron'; font-size: 3rem; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
+        
+        /* Leaderboard */
+        .leaderboard-title { font-family: 'Orbitron'; color: var(--pink); border-bottom: 2px solid var(--pink); padding-bottom: 10px; margin-bottom: 20px; }
+        .player-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #111; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .streak-tag { color: gold; font-size: 0.8rem; font-weight: bold; }
+
+        /* Boutons de réponse */
+        .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        button { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 15px; cursor: pointer; font-family: 'Orbitron'; transition: 0.2s; }
+        button:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+        
         #timer-bar { position: absolute; top: 0; left: 0; height: 5px; background: var(--pink); width: 100%; transition: width 1s linear; }
+        #feedback-msg { font-family: 'Orbitron'; font-size: 1.2rem; height: 30px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-<div id="app">
+<div class="grid"></div>
+
+<div id="game-container">
     <div id="timer-bar"></div>
+    <div id="feedback-msg"></div>
 
-    <div id="view-join">
-        <div id="status" style="color: var(--pink); font-size: 0.8rem;">[ CONNECTING... ]</div>
-        <h1>NEON PULSE</h1>
-        <input type="text" id="nick" placeholder="IDENTIFIER">
-        <br>
-        <button onclick="join()">INITIALIZE</button>
-    </div>
+    <div id="app-box">
+        <div id="view-join">
+            <h1>NEON PULSE</h1>
+            <input type="text" id="nick" placeholder="PILOT_ID" style="padding:15px; width:70%; text-align:center; background:black; color:white; border:1px solid var(--neon);">
+            <br><br>
+            <button onclick="join()">INITIALIZE ACCESS</button>
+        </div>
 
-    <div id="view-lobby" class="hidden">
-        <h2 style="color: var(--neon);">LOBBY SYNC</h2>
-        <div id="player-list" style="margin: 20px 0;"></div>
-        <button id="start-btn" class="hidden" onclick="launch()">START PROTOCOL</button>
-    </div>
+        <div id="view-lobby" class="hidden">
+            <h2 id="host-msg" style="color:var(--neon)">AWAITING SYNC...</h2>
+            <button id="start-btn" class="hidden" onclick="launch()">[ EXECUTE START ]</button>
+        </div>
 
-    <div id="view-game" class="hidden">
-        <h2 id="q-text">...</h2>
-        <div id="choices-box"></div>
-        <h3 style="color: var(--pink);">XP: <span id="xp">0000</span></h3>
+        <div id="view-game" class="hidden">
+            <h2 id="q-text" style="min-height:80px;">...RETRIEVING DATA...</h2>
+            <div id="choices-area" class="choices-grid"></div>
+        </div>
     </div>
 </div>
 
+<div id="sidebar">
+    <h3 class="leaderboard-title">LIVE RANKING</h3>
+    <div id="leaderboard-content"></div>
+</div>
+
+<script>
+    const socket = io();
+    let currentAns = "";
+
+    function join() {
+        const n = document.getElementById('nick').value || "RECRUIT";
+        socket.emit('joinGame', n);
+        document.getElementById('view-join').classList.add('hidden');
+        document.getElementById('view-lobby').classList.remove('hidden');
+    }
+
+    function launch() { socket.emit('startGameRequest'); }
+
+    socket.on('hostStatus', (isHost) => {
+        document.getElementById('start-btn').classList.toggle('hidden', !isHost);
+        document.getElementById('host-msg').innerText = isHost ? "READY TO START" : "WAITING FOR HOST...";
+    });
+
+    socket.on('updateLobby', (players) => {
+        const board = document.getElementById('leaderboard-content');
+        board.innerHTML = players.map((p, index) => `
+            <div class="player-row">
+                <span>#${index+1} ${p.username} ${p.streak >= 3 ? `<span class="streak-tag">🔥${p.streak}</span>` : ''}</span>
+                <span style="color:var(--neon)">${p.score}</span>
+            </div>
+        `).join('');
+    });
+
+    socket.on('gameStart', () => {
+        document.getElementById('view-lobby').classList.add('hidden');
+        document.getElementById('view-game').classList.remove('hidden');
+    });
+
+    socket.on('nextQuestion', (q) => {
+        currentAns = q.correct;
+        document.getElementById('feedback-msg').innerText = "";
+        document.getElementById('q-text').innerText = q.text;
+        const area = document.getElementById('choices-area');
+        area.innerHTML = "";
+        q.choices.forEach(c => {
+            const b = document.createElement('button');
+            b.innerText = c;
+            b.onclick = () => {
+                const isOk = c.trim().toLowerCase() === currentAns.trim().toLowerCase();
+                socket.emit('submitAnswer', { isCorrect: isOk });
+                reveal(b);
+            };
+            area.appendChild(b);
+        });
+    });
+
+    socket.on('feedback', (data) => {
+        const msg = document.getElementById('feedback-msg');
+        if(data.correct) {
+            msg.innerText = `+${data.points} XP ${data.streak >= 3 ? 'STREAK BONUS!' : ''}`;
+            msg.style.color = "var(--green)";
+        } else {
+            msg.innerText = "-50 XP / STREAK BROKEN";
+            msg.style.color = "var(--pink)";
+        }
+    });
+
+    function reveal(clicked) {
+        document.querySelectorAll('#choices-area button').forEach(b => {
+            b.disabled = true;
+            if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) {
+                b.style.background = "var(--green)"; b.style.color = "#000";
+            } else if(b === clicked) {
+                b.style.background = "var(--pink)";
+            }
+        });
+    }
+
+    socket.on('timerUpdate', (t) => document.getElementById('timer-bar').style.width = (t/15)*100 + "%");
+    socket.on('timeUp', (ans) => { if(ans) currentAns = ans; reveal(null); });
+</script>
 </body>
 </html>
