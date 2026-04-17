@@ -66,11 +66,8 @@ function terminerPartie() {
 
 io.on('connection', (socket) => {
     socket.on('joinGame', (username) => {
-        // Le premier joueur devient l'hôte
         const isHost = Object.keys(players).length === 0;
         players[socket.id] = { username, score: 0, streak: 0, isHost: isHost };
-        
-        // On informe le joueur s'il est chef ou non
         socket.emit('hostStatus', isHost);
         io.emit('updateLobby', Object.values(players));
     });
@@ -108,19 +105,4 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        const wasHost = players[socket.id]?.isHost;
-        delete players[socket.id];
-        
-        // Si le chef part, on nomme un nouveau chef
-        if (wasHost && Object.keys(players).length > 0) {
-            const nextId = Object.keys(players)[0];
-            players[nextId].isHost = true;
-            io.to(nextId).emit('hostStatus', true);
-        }
-        
-        io.emit('updateLobby', Object.values(players));
-    });
-});
-
-const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Serveur prêt sur ${PORT}`));
+        const was
