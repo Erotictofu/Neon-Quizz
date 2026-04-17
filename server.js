@@ -39,11 +39,12 @@ async function nextQuestion() {
             io.emit('timerUpdate', timeLeft);
             if(timeLeft <= 0) {
                 clearInterval(timerInterval);
+                // On envoie la réponse correcte pour forcer l'affichage en vert chez tout le monde
                 io.emit('timeUp', currentQuestion.correct);
-                setTimeout(nextQuestion, 3000);
+                setTimeout(nextQuestion, 3500);
             }
         }, 1000);
-    } catch (e) { setTimeout(nextQuestion, 1000); }
+    } catch (e) { setTimeout(nextQuestion, 2000); }
 }
 
 io.on('connection', (socket) => {
@@ -67,7 +68,7 @@ io.on('connection', (socket) => {
         if (!p || !currentQuestion) return;
         if (data.isCorrect) {
             const speedBonus = Math.max(0, 15 - (Date.now() - currentQuestion.startTime)/1000);
-            let points = Math.round(150 + (speedBonus * 6));
+            let points = Math.round(150 + (speedBonus * 8));
             p.streak++;
             if(p.streak >= 3) points = Math.round(points * 1.5);
             p.score += points;
@@ -78,7 +79,7 @@ io.on('connection', (socket) => {
             socket.emit('feedback', { type: 'wrong', streak: 0 });
         }
         socket.emit('yourScore', p.score);
-        io.emit('updateLobby', Object.values(players));
+        io.emit('updateLeaderboard', Object.values(players).sort((a,b) => b.score - a.score));
     });
 
     socket.on('chatMessage', (msg) => {
@@ -86,14 +87,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        if (players[socket.id]?.isHost) {
+        const p = players[socket.id];
+        if (p) {
+            const wasHost = p.isHost;
             delete players[socket.id];
-            const next = Object.keys(players)[0];
-            if(next) {
+            if (wasHost && Object.keys(players).length > 0) {
+                const next = Object.keys(players)[0];
                 players[next].isHost = true;
                 io.to(next).emit('hostStatus', true);
             }
-        } else { delete players[socket.id]; }
+        }
         io.emit('updateLobby', Object.values(players));
     });
 });
