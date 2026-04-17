@@ -7,26 +7,21 @@ const path = require('path');
 
 app.use(express.static(__dirname));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
 let players = {};
 let currentQuestion = null;
-let timeLeft = 15;
-let timerInterval = null;
 let gameStarted = false;
 let questionCount = 0;
-const MAX_QUESTIONS = 50;
+let timerInterval = null;
+let timeLeft = 15;
 
-async function chargerNouvelleQuestion() {
-    if (questionCount >= MAX_QUESTIONS) {
-        terminerPartie();
+async function nextQuestion() {
+    if (questionCount >= 50) {
+        io.emit('gameOver', Object.values(players).sort((a,b) => b.score - a.score)[0]);
         return;
     }
     try {
-        const response = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
-        const q = response.data[0];
+        const res = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
+        const q = res.data[0];
         questionCount++;
         currentQuestion = {
             text: q.question.text,
@@ -37,91 +32,70 @@ async function chargerNouvelleQuestion() {
         };
         timeLeft = 15;
         io.emit('nextQuestion', currentQuestion);
-        startTimer();
-    } catch (error) {
-        setTimeout(chargerNouvelleQuestion, 2000);
-    }
-}
-
-function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        io.emit('timerUpdate', timeLeft);
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            io.emit('timeUp', currentQuestion.correct);
-            setTimeout(chargerNouvelleQuestion, 4000);
-        }
-    }, 1000);
-}
-
-function terminerPartie() {
-    gameStarted = false;
-    const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-    io.emit('gameOver', { winner: sorted[0]?.username || "Inconnu", leaderboard: sorted });
-    questionCount = 0;
-    Object.keys(players).forEach(id => { 
-        players[id].score = 0; 
-        players[id].streak = 0; 
-    });
+        
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            io.emit('timerUpdate', timeLeft);
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                io.emit('timeUp', currentQuestion.correct);
+                setTimeout(nextQuestion, 3000);
+            }
+        }, 1000);
+    } catch (e) { setTimeout(nextQuestion, 1000); }
 }
 
 io.on('connection', (socket) => {
-    socket.on('joinGame', (username) => {
+    socket.on('joinGame', (name) => {
         const isHost = Object.keys(players).length === 0;
-        players[socket.id] = { username, score: 0, streak: 0, isHost: isHost };
+        players[socket.id] = { username: name, score: 0, streak: 0, isHost: isHost };
         socket.emit('hostStatus', isHost);
         io.emit('updateLobby', Object.values(players));
     });
 
     socket.on('startGameRequest', () => {
-        if (players[socket.id]?.isHost && !gameStarted) {
+        if(players[socket.id]?.isHost && !gameStarted) {
             gameStarted = true;
             io.emit('gameStart');
-            setTimeout(chargerNouvelleQuestion, 2000);
+            nextQuestion();
         }
     });
 
     socket.on('submitAnswer', (data) => {
         const p = players[socket.id];
-        if (p && gameStarted) {
-            if (data.isCorrect) {
-                const timeTaken = (Date.now() - currentQuestion.startTime) / 1000;
-                let points = Math.round(150 + (Math.max(0, 15 - timeTaken) * 6.6));
-                p.streak++;
-                if (p.streak >= 3) points = Math.round(points * 1.5);
-                p.score += points;
-                socket.emit('feedback', { type: 'correct', points, streak: p.streak });
-            } else {
-                p.score = Math.max(0, p.score - 50);
-                p.streak = 0;
-                socket.emit('feedback', { type: 'wrong', points: -50, streak: 0 });
-            }
-            io.emit('updateLeaderboard', Object.values(players).sort((a, b) => b.score - a.score));
+        if (!p || !currentQuestion) return;
+        if (data.isCorrect) {
+            const speedBonus = Math.max(0, 15 - (Date.now() - currentQuestion.startTime)/1000);
+            let points = Math.round(150 + (speedBonus * 6));
+            p.streak++;
+            if(p.streak >= 3) points = Math.round(points * 1.5);
+            p.score += points;
+            socket.emit('feedback', { type: 'correct', streak: p.streak });
+        } else {
+            p.score = Math.max(0, p.score - 50);
+            p.streak = 0;
+            socket.emit('feedback', { type: 'wrong', streak: 0 });
         }
+        socket.emit('yourScore', p.score);
+        io.emit('updateLobby', Object.values(players));
     });
 
     socket.on('chatMessage', (msg) => {
-        const p = players[socket.id];
-        if (p) io.emit('newChatMessage', { user: p.username, text: msg });
+        if(players[socket.id]) io.emit('chat', { user: players[socket.id].username, text: msg });
     });
 
     socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            const wasHost = players[socket.id].isHost;
+        if (players[socket.id]?.isHost) {
             delete players[socket.id];
-            
-            // Si le chef part, on nomme le suivant
-            if (wasHost && Object.keys(players).length > 0) {
-                const nextId = Object.keys(players)[0];
-                players[nextId].isHost = true;
-                io.to(nextId).emit('hostStatus', true);
+            const next = Object.keys(players)[0];
+            if(next) {
+                players[next].isHost = true;
+                io.to(next).emit('hostStatus', true);
             }
-        }
+        } else { delete players[socket.id]; }
         io.emit('updateLobby', Object.values(players));
     });
 });
 
-const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Serveur prêt sur ${PORT}`));
+http.listen(process.env.PORT || 10000, '0.0.0.0');
