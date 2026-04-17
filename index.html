@@ -64,7 +64,7 @@
 
     <div id="game-screen" class="hidden">
         <div id="q-info">TRANSMISSION <span id="q-num">1</span>/50</div>
-        <div id="question" style="margin-bottom:20px; font-size:1.2rem; min-height: 60px;">RECEPTION DU SIGNAL...</div>
+        <div id="question" style="margin-bottom:20px; font-size:1.2rem; min-height: 60px;">CHARGEMENT...</div>
         <div id="options" class="btn-stack"></div>
         <div id="score-display">XP: <span id="score-val">0000</span></div>
     </div>
@@ -78,23 +78,31 @@
     </div>
 </div>
 
-<audio id="bgm" loop>
-    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" type="audio/mpeg">
-</audio>
+<audio id="bgm" loop></audio>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
     let currentCorrectAnswer = "";
+    const playlist = [
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    ];
+
+    function playRandomMusic() {
+        const bgm = document.getElementById("bgm");
+        bgm.src = playlist[Math.floor(Math.random() * playlist.length)];
+        bgm.volume = 0.2;
+        bgm.play().catch(() => console.log("Audio en attente..."));
+    }
 
     function joinLobby() {
         const input = document.getElementById("username-input");
         const name = input.value.trim().toUpperCase() || "INT_" + Math.floor(Math.random()*999);
         
-        // Fix Musique : Jouée au clic utilisateur
-        const bgm = document.getElementById("bgm");
-        bgm.volume = 0.2;
-        bgm.play().catch(() => console.log("Audio en attente..."));
+        playRandomMusic();
 
         document.getElementById("login-zone").classList.add("hidden");
         document.getElementById("lobby-zone").classList.remove("hidden");
@@ -145,10 +153,8 @@
     function reveal(clickedBtn, isCorrect) {
         document.querySelectorAll('#options button').forEach(b => {
             b.disabled = true;
-            // Affiche la bonne réponse en vert quoi qu'il arrive
             if (b.innerText === currentCorrectAnswer) b.classList.add('correct');
         });
-        // Si le joueur s'est trompé, affiche son bouton en rouge
         if (clickedBtn && !isCorrect) clickedBtn.classList.add('wrong');
     }
 
@@ -162,6 +168,10 @@
         document.getElementById("winner-name").innerText = data.winner;
         document.getElementById("final-leaderboard").innerHTML = data.leaderboard
             .map((p, i) => `<div>#${i+1} ${p.username} : ${p.score} XP</div>`).join('');
+        
+        const bgm = document.getElementById("bgm");
+        bgm.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
+        bgm.play();
     });
 </script>
 </body>
