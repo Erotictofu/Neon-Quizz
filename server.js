@@ -16,8 +16,8 @@ let timeLeft = 15;
 
 async function nextQuestion() {
     if (questionCount >= 50) {
-        const winner = Object.values(players).sort((a,b) => b.score - a.score)[0];
-        io.emit('gameOver', winner);
+        const sorted = Object.values(players).sort((a,b) => b.score - a.score);
+        io.emit('gameOver', sorted[0]);
         gameStarted = false;
         return;
     }
@@ -48,7 +48,6 @@ async function nextQuestion() {
             }
         }, 1000);
     } catch (e) {
-        console.log("Erreur API, nouvelle tentative...");
         setTimeout(nextQuestion, 2000);
     }
 }
@@ -62,8 +61,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startGameRequest', () => {
-        // Sécurité : n'importe quel joueur peut forcer le start si l'hôte bugue, 
-        // ou on restreint à players[socket.id].isHost
         if (!gameStarted) {
             gameStarted = true;
             questionCount = 0;
@@ -82,3 +79,29 @@ io.on('connection', (socket) => {
             p.streak++;
             if(p.streak >= 3) pts *= 1.5;
             p.score += Math.round(pts);
+            socket.emit('feedback', { type: 'correct', streak: p.streak });
+        } else {
+            p.score = Math.max(0, p.score - 50);
+            p.streak = 0;
+            socket.emit('feedback', { type: 'wrong', streak: 0 });
+        }
+        socket.emit('yourScore', p.score);
+        io.emit('updateLobby', Object.values(players));
+    });
+
+    socket.on('disconnect', () => {
+        if (players[socket.id]) {
+            const wasHost = players[socket.id].isHost;
+            delete players[socket.id];
+            if (wasHost && Object.keys(players).length > 0) {
+                const nextId = Object.keys(players)[0];
+                players[nextId].isHost = true;
+                io.to(nextId).emit('hostStatus', true);
+            }
+        }
+        io.emit('updateLobby', Object.values(players));
+    });
+});
+
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, '0.0.0.0', () => console.log(`Serveur prêt`));
