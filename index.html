@@ -15,8 +15,8 @@
         h1 { font-family: 'Orbitron'; font-weight: 900; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
         button { background: transparent; border: 2px solid var(--neon); color: var(--neon); padding: 15px 30px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; margin: 10px; text-transform: uppercase; }
         button:hover:not(:disabled) { background: var(--neon); color: #000; }
-        .correct { background: var(--green) !important; color: #000 !important; box-shadow: 0 0 20px var(--green); }
-        .wrong { background: var(--pink) !important; color: #fff !important; box-shadow: 0 0 20px var(--pink); }
+        .correct { background: var(--green) !important; color: #000 !important; box-shadow: 0 0 20px var(--green) !important; border-color: white !important; }
+        .wrong { background: var(--pink) !important; color: #fff !important; box-shadow: 0 0 20px var(--pink) !important; border-color: white !important; }
         #timer-bar { position: absolute; top: 0; left: 0; height: 6px; background: var(--neon); width: 100%; transition: width 1s linear; }
         .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
     </style>
@@ -65,7 +65,8 @@
         function startGame() { socket.emit('startGameRequest'); }
 
         socket.on('hostStatus', (h) => {
-            document.getElementById('start-btn').classList.toggle('hidden', !h);
+            const btn = document.getElementById('start-btn');
+            btn.classList.toggle('hidden', !h);
             document.getElementById('host-msg').innerText = h ? ">> OPERATOR STATUS GRANTED" : ">> AWAITING OPERATOR...";
         });
 
@@ -98,8 +99,11 @@
         function reveal(clicked) {
             document.querySelectorAll('#choices-box button').forEach(b => {
                 b.disabled = true;
-                if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) b.classList.add('correct');
-                else if(b === clicked) b.classList.add('wrong');
+                if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) {
+                    b.classList.add('correct');
+                } else if(b === clicked) {
+                    b.classList.add('wrong');
+                }
             });
         }
 
