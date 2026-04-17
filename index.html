@@ -2,115 +2,42 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>NEON PULSE 2026</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON PULSE 2026 - PROTOCOL</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root { --neon: #00f2ff; --pink: #ff0055; --green: #39ff14; --bg: #020008; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani'; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.1; transform: perspective(500px) rotateX(60deg); animation: move 2s linear infinite; z-index: -1; }
-        @keyframes move { from { background-position: 0 0; } to { background-position: 0 50px; } }
-        #app { width: 90%; max-width: 800px; background: rgba(5, 5, 25, 0.95); border: 3px solid var(--neon); padding: 30px; text-align: center; box-shadow: 0 0 40px var(--neon); position: relative; }
+        
+        body { 
+            margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani', sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden;
+        }
+
+        /* Effet de grille Cyberpunk */
+        .background-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px);
+            background-size: 50px 50px; opacity: 0.1;
+            transform: perspective(500px) rotateX(60deg); transform-origin: top;
+            animation: grid-move 2s linear infinite; z-index: -1;
+        }
+        @keyframes grid-move { from { background-position: 0 0; } to { background-position: 0 50px; } }
+
+        #game-window {
+            width: 90%; max-width: 800px; background: rgba(5, 5, 20, 0.95);
+            border: 3px solid var(--neon); padding: 30px; text-align: center;
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.3); position: relative;
+        }
+
         .hidden { display: none !important; }
-        h1 { font-family: 'Orbitron'; font-weight: 900; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
-        button { background: transparent; border: 2px solid var(--neon); color: var(--neon); padding: 15px 30px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; margin: 10px; text-transform: uppercase; }
-        button:hover:not(:disabled) { background: var(--neon); color: #000; }
-        .correct { background: var(--green) !important; color: #000 !important; box-shadow: 0 0 20px var(--green) !important; border-color: white !important; }
-        .wrong { background: var(--pink) !important; color: #fff !important; box-shadow: 0 0 20px var(--pink) !important; border-color: white !important; }
-        #timer-bar { position: absolute; top: 0; left: 0; height: 6px; background: var(--neon); width: 100%; transition: width 1s linear; }
-        .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-    </style>
-</head>
-<body>
-    <div class="grid-bg"></div>
-    <div id="app">
-        <div id="timer-bar"></div>
 
-        <div id="view-join">
-            <h1>NEON PULSE</h1>
-            <input type="text" id="nick" placeholder="NICKNAME" style="padding:15px; background:black; color:white; border:1px solid var(--neon); text-align:center;">
-            <br><br><button onclick="join()">CONNECT</button>
-        </div>
+        h1 { font-family: 'Orbitron'; font-weight: 900; letter-spacing: 5px; color: var(--neon); text-shadow: 0 0 20px var(--neon); margin: 0 0 20px 0; }
 
-        <div id="view-lobby" class="hidden">
-            <h2 id="host-msg">SYNCHRONIZING...</h2>
-            <div id="player-list" style="margin:20px 0;"></div>
-            <button id="start-btn" class="hidden" onclick="startGame()">EXECUTE START</button>
-        </div>
-
-        <div id="view-game" class="hidden">
-            <div id="streak" style="color:gold; height:20px;"></div>
-            <h2 id="q-text" style="min-height:80px;">...</h2>
-            <div id="choices-box" class="choices"></div>
-            <div style="font-family:Orbitron; color:var(--pink); margin-top:20px;">XP: <span id="xp">0000</span></div>
-        </div>
-    </div>
-
-    <audio id="music" loop></audio>
-
-    <script>
-        const socket = io();
-        let currentAns = "";
-
-        function join() {
-            const n = document.getElementById('nick').value || "UNIT_" + Math.floor(Math.random()*99);
-            socket.emit('joinGame', n);
-            const m = document.getElementById('music');
-            m.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3";
-            m.volume = 0.15; m.play().catch(()=>{});
-            document.getElementById('view-join').classList.add('hidden');
-            document.getElementById('view-lobby').classList.remove('hidden');
+        input {
+            background: #000; border: 2px solid var(--neon); color: white;
+            padding: 15px; font-family: 'Orbitron'; width: 60%; text-align: center; outline: none;
         }
 
-        function startGame() { socket.emit('startGameRequest'); }
-
-        socket.on('hostStatus', (h) => {
-            const btn = document.getElementById('start-btn');
-            btn.classList.toggle('hidden', !h);
-            document.getElementById('host-msg').innerText = h ? ">> OPERATOR STATUS GRANTED" : ">> AWAITING OPERATOR...";
-        });
-
-        socket.on('updateLobby', (pts) => {
-            document.getElementById('player-list').innerHTML = pts.map(p => `<div>${p.username}: ${p.score}XP</div>`).join('');
-        });
-
-        socket.on('gameStart', () => {
-            document.getElementById('view-lobby').classList.add('hidden');
-            document.getElementById('view-game').classList.remove('hidden');
-        });
-
-        socket.on('nextQuestion', (q) => {
-            currentAns = q.correct;
-            document.getElementById('q-text').innerText = q.text;
-            const box = document.getElementById('choices-box');
-            box.innerHTML = "";
-            q.choices.forEach(c => {
-                const b = document.createElement('button');
-                b.innerText = c;
-                b.onclick = () => {
-                    const ok = c.trim().toLowerCase() === currentAns.trim().toLowerCase();
-                    socket.emit('submitAnswer', { isCorrect: ok });
-                    reveal(b);
-                };
-                box.appendChild(b);
-            });
-        });
-
-        function reveal(clicked) {
-            document.querySelectorAll('#choices-box button').forEach(b => {
-                b.disabled = true;
-                if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) {
-                    b.classList.add('correct');
-                } else if(b === clicked) {
-                    b.classList.add('wrong');
-                }
-            });
-        }
-
-        socket.on('timerUpdate', (t) => document.getElementById('timer-bar').style.width = (t/15)*100 + "%");
-        socket.on('timeUp', (a) => { if(a) currentAns = a; reveal(null); });
-        socket.on('yourScore', (s) => document.getElementById('xp').innerText = s.toString().padStart(4, '0'));
-        socket.on('feedback', (d) => document.getElementById('streak').innerText = d.streak >= 3 ? "🔥 STREAK X" + d.streak : "");
-    </script>
-</body>
-</html>
+        button {
+            background: transparent;
