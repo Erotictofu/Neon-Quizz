@@ -61,7 +61,10 @@ function terminerPartie() {
     const sorted = Object.values(players).sort((a, b) => b.score - a.score);
     io.emit('gameOver', { winner: sorted[0]?.username || "Inconnu", leaderboard: sorted });
     questionCount = 0;
-    Object.keys(players).forEach(id => { players[id].score = 0; players[id].streak = 0; });
+    Object.keys(players).forEach(id => { 
+        players[id].score = 0; 
+        players[id].streak = 0; 
+    });
 }
 
 io.on('connection', (socket) => {
@@ -105,4 +108,20 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        const was
+        if (players[socket.id]) {
+            const wasHost = players[socket.id].isHost;
+            delete players[socket.id];
+            
+            // Si le chef part, on nomme le suivant
+            if (wasHost && Object.keys(players).length > 0) {
+                const nextId = Object.keys(players)[0];
+                players[nextId].isHost = true;
+                io.to(nextId).emit('hostStatus', true);
+            }
+        }
+        io.emit('updateLobby', Object.values(players));
+    });
+});
+
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, '0.0.0.0', () => console.log(`Serveur prêt sur ${PORT}`));
