@@ -23,7 +23,7 @@
         }
         #timer-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); position: absolute; top: 0; left: 0; }
         #timer-bar { width: 100%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 1s linear; }
-        h1 { font-family: 'Orbitron', sans-serif; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); margin-bottom: 20px; }
+        h1 { font-family: 'Orbitron', sans-serif; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); }
         input {
             background: rgba(0, 242, 255, 0.05); border: 1px solid var(--neon-blue);
             padding: 15px; width: 80%; color: var(--neon-blue); font-family: 'Orbitron';
@@ -32,16 +32,14 @@
         .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         button {
             background: rgba(0, 242, 255, 0.03); color: var(--neon-blue); border: 1px solid var(--neon-blue);
-            padding: 15px; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase;
-            transition: 0.3s;
+            padding: 15px; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.3s;
         }
-        button:hover:not(:disabled) { background: rgba(0, 242, 255, 0.1); }
-        button:disabled { cursor: default; opacity: 0.7; }
+        button:disabled { cursor: default; opacity: 1; color: #fff; }
         button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: var(--neon-green) !important; box-shadow: 0 0 20px var(--neon-green); }
         button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: var(--neon-pink) !important; box-shadow: 0 0 20px var(--neon-pink); }
-        #score-display { margin-top: 25px; font-family: 'Orbitron'; color: var(--neon-pink); font-size: 1.5rem; }
         .hidden { display: none; }
-        #lobby-list { margin: 15px 0; padding: 10px; border: 1px dashed var(--neon-blue); min-height: 50px; }
+        #q-info { font-family: 'Orbitron'; font-size: 0.8rem; color: var(--neon-blue); margin-bottom: 10px; }
+        .crown { font-size: 4rem; display: block; filter: drop-shadow(0 0 15px gold); }
     </style>
 </head>
 <body>
@@ -53,61 +51,62 @@
         <h1>NEON PULSE</h1>
         <div id="login-zone">
             <input type="text" id="username-input" placeholder="CODE NAME..." maxlength="12">
-            <button onclick="joinLobby()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">REJOINDRE LE LOBBY</button>
+            <button onclick="joinLobby()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">REJOINDRE</button>
         </div>
         <div id="lobby-zone" class="hidden">
-            <p style="color:var(--neon-blue)">DANS LE RÉSEAU :</p>
-            <div id="lobby-list"></div>
-            <button id="ready-btn" onclick="sendReady()" style="width:100%; border-color: var(--neon-green); color: var(--neon-green);">JE SUIS PRÊT</button>
+            <p>JOUEURS :</p>
+            <div id="lobby-list" style="margin:20px 0; color:var(--neon-green)"></div>
+            <button id="ready-btn" onclick="sendReady()" style="width:100%; border-color: var(--neon-green); color: var(--neon-green);">PRÊT</button>
         </div>
     </div>
 
     <div id="game-screen" class="hidden">
-        <div id="question" style="margin-bottom:20px; font-size:1.2rem;">SYNCHRONISATION...</div>
+        <div id="q-info">FLUX : <span id="q-num">1</span>/50</div>
+        <div id="question" style="margin-bottom:20px; font-size:1.2rem; min-height: 60px;">...</div>
         <div id="options" class="btn-stack"></div>
-        <div id="score-display">XP: <span id="score-val">0000</span></div>
-        <div id="leaderboard" style="margin-top:20px; text-align:left; font-size:0.8rem; color:var(--neon-blue);">
-            <strong>CLASSEMENT :</strong> <div id="player-list"></div>
-        </div>
+        <div id="score-display" style="margin-top:20px; font-family:'Orbitron'; color:var(--neon-pink)">XP: <span id="score-val">0000</span></div>
+    </div>
+
+    <div id="winner-screen" class="hidden">
+        <span class="crown">👑</span>
+        <h2 style="color:gold;">WINNER</h2>
+        <h1 id="winner-name" style="color:var(--neon-blue)">---</h1>
+        <div id="final-leaderboard" style="margin-top:20px; text-align:left;"></div>
+        <button onclick="location.reload()" style="margin-top:30px; border-color:var(--neon-pink); color:var(--neon-pink);">REJOUER</button>
     </div>
 </div>
-
-<audio id="bgm" loop><source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" type="audio/mpeg"></audio>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    let myUsername = "";
     let currentCorrectAnswer = "";
 
     function joinLobby() {
         const input = document.getElementById("username-input");
-        myUsername = input.value.trim().toUpperCase() || "USER_" + Math.floor(Math.random()*999);
+        const name = input.value.trim().toUpperCase() || "USER_" + Math.floor(Math.random()*999);
         document.getElementById("login-zone").classList.add("hidden");
         document.getElementById("lobby-zone").classList.remove("hidden");
-        socket.emit('joinGame', myUsername);
+        socket.emit('joinGame', name);
     }
 
     function sendReady() {
-        const btn = document.getElementById("ready-btn");
-        btn.disabled = true;
-        btn.innerText = "EN ATTENTE DES AUTRES...";
+        document.getElementById("ready-btn").disabled = true;
+        document.getElementById("ready-btn").innerText = "ATTENTE...";
         socket.emit('playerReady');
     }
 
     socket.on('updateLobby', (players) => {
-        const list = document.getElementById("lobby-list");
-        list.innerHTML = players.map(p => `<div>${p.username} ${p.ready ? '<span style="color:var(--neon-green)">[PRÊT]</span>' : '<span style="color:var(--neon-pink)">[EN ATTENTE]</span>'}</div>`).join('');
+        document.getElementById("lobby-list").innerHTML = players.map(p => `<div>${p.username} ${p.ready ? '✅' : '⏳'}</div>`).join('');
     });
 
     socket.on('gameStart', () => {
         document.getElementById("start-screen").classList.add("hidden");
         document.getElementById("game-screen").classList.remove("hidden");
-        document.getElementById("bgm").play().catch(() => {});
     });
 
     socket.on('nextQuestion', (qData) => {
         currentCorrectAnswer = qData.correct;
+        document.getElementById("q-num").innerText = qData.number;
         document.getElementById("question").innerText = qData.text;
         const container = document.getElementById("options");
         container.innerHTML = "";
@@ -127,26 +126,32 @@
         document.getElementById("timer-bar").style.width = (time / 15) * 100 + "%";
     });
 
-    socket.on('timeUp', (correct) => {
-        reveal(null, false);
-    });
+    socket.on('timeUp', (correct) => reveal(null, false));
 
     function reveal(clickedBtn, isCorrect) {
-        const btns = document.querySelectorAll('#options button');
-        btns.forEach(b => {
+        document.querySelectorAll('#options button').forEach(b => {
             b.disabled = true;
-            if (b.innerText === currentCorrectAnswer) b.classList.add('correct');
+            // Correction ici : On affiche TOUJOURS le vert sur la bonne réponse
+            if (b.innerText === currentCorrectAnswer) {
+                b.classList.add('correct');
+            }
         });
-        if (clickedBtn && !isCorrect) clickedBtn.classList.add('wrong');
+        // Si le bouton cliqué est faux, on le met en rouge
+        if (clickedBtn && !isCorrect) {
+            clickedBtn.classList.add('wrong');
+        }
     }
-
-    socket.on('updateLeaderboard', (players) => {
-        const list = document.getElementById("player-list");
-        list.innerHTML = players.map((p, i) => `<div>#${i+1} ${p.username} : ${p.score}</div>`).join('');
-    });
 
     socket.on('yourScore', (score) => {
         document.getElementById("score-val").innerText = score.toString().padStart(4, '0');
+    });
+
+    socket.on('gameOver', (data) => {
+        document.getElementById("game-screen").classList.add("hidden");
+        document.getElementById("winner-screen").classList.remove("hidden");
+        document.getElementById("winner-name").innerText = data.winner;
+        document.getElementById("final-leaderboard").innerHTML = data.leaderboard
+            .map((p, i) => `<div>${i+1}. ${p.username} - ${p.score} XP</div>`).join('');
     });
 </script>
 </body>
