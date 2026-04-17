@@ -61,25 +61,25 @@ function terminerPartie() {
     const sorted = Object.values(players).sort((a, b) => b.score - a.score);
     io.emit('gameOver', { winner: sorted[0]?.username || "Inconnu", leaderboard: sorted });
     questionCount = 0;
-    Object.keys(players).forEach(id => { players[id].ready = false; players[id].score = 0; players[id].streak = 0; });
+    Object.keys(players).forEach(id => { players[id].score = 0; players[id].streak = 0; });
 }
 
 io.on('connection', (socket) => {
     socket.on('joinGame', (username) => {
-        players[socket.id] = { username, score: 0, ready: false, streak: 0 };
+        // Le premier joueur devient l'hôte
+        const isHost = Object.keys(players).length === 0;
+        players[socket.id] = { username, score: 0, streak: 0, isHost: isHost };
+        
+        // On informe le joueur s'il est chef ou non
+        socket.emit('hostStatus', isHost);
         io.emit('updateLobby', Object.values(players));
     });
 
-    socket.on('playerReady', () => {
-        if (players[socket.id]) {
-            players[socket.id].ready = true;
-            const allPlayers = Object.values(players);
-            io.emit('updateLobby', allPlayers);
-            if (allPlayers.every(p => p.ready) && allPlayers.length > 0 && !gameStarted) {
-                gameStarted = true;
-                io.emit('gameStart');
-                setTimeout(chargerNouvelleQuestion, 2000);
-            }
+    socket.on('startGameRequest', () => {
+        if (players[socket.id]?.isHost && !gameStarted) {
+            gameStarted = true;
+            io.emit('gameStart');
+            setTimeout(chargerNouvelleQuestion, 2000);
         }
     });
 
@@ -88,9 +88,9 @@ io.on('connection', (socket) => {
         if (p && gameStarted) {
             if (data.isCorrect) {
                 const timeTaken = (Date.now() - currentQuestion.startTime) / 1000;
-                let points = Math.round(150 + (Math.max(0, 15 - timeTaken) * 6.6)); // Bonus rapidité max +100
+                let points = Math.round(150 + (Math.max(0, 15 - timeTaken) * 6.6));
                 p.streak++;
-                if (p.streak >= 3) points = Math.round(points * 1.5); // Multiplicateur série
+                if (p.streak >= 3) points = Math.round(points * 1.5);
                 p.score += points;
                 socket.emit('feedback', { type: 'correct', points, streak: p.streak });
             } else {
@@ -108,10 +108,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        const wasHost = players[socket.id]?.isHost;
         delete players[socket.id];
+        
+        // Si le chef part, on nomme un nouveau chef
+        if (wasHost && Object.keys(players).length > 0) {
+            const nextId = Object.keys(players)[0];
+            players[nextId].isHost = true;
+            io.to(nextId).emit('hostStatus', true);
+        }
+        
         io.emit('updateLobby', Object.values(players));
     });
 });
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Serveur PRO actif sur ${PORT}`));
+http.listen(PORT, '0.0.0.0', () => console.log(`Serveur prêt sur ${PORT}`));
