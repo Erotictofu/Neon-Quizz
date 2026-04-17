@@ -13,21 +13,20 @@ app.get('/', (req, res) => {
 
 let players = {};
 let currentQuestion = null;
-let timeLeft = 30;
+let timeLeft = 15; // Passage à 15 secondes
 let timerInterval = null;
+let gameStarted = false;
 
 async function chargerNouvelleQuestion() {
     try {
         const response = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
         const q = response.data[0];
-        
         currentQuestion = {
             text: q.question.text,
             choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
             correct: q.correctAnswer
         };
-
-        timeLeft = 30;
+        timeLeft = 15;
         io.emit('nextQuestion', currentQuestion);
         startTimer();
     } catch (error) {
@@ -43,46 +42,50 @@ function startTimer() {
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             io.emit('timeUp', currentQuestion.correct);
-            setTimeout(chargerNouvelleQuestion, 4000);
+            setTimeout(chargerNouvelleQuestion, 3000);
         }
     }, 1000);
 }
 
 io.on('connection', (socket) => {
     socket.on('joinGame', (username) => {
-        players[socket.id] = { username: username, score: 0 };
-        if (Object.keys(players).length === 1 && !currentQuestion) {
-            chargerNouvelleQuestion();
-        } else if (currentQuestion) {
-            socket.emit('nextQuestion', currentQuestion);
+        players[socket.id] = { username, score: 0, ready: false };
+        io.emit('updateLobby', Object.values(players));
+    });
+
+    socket.on('playerReady', () => {
+        if (players[socket.id]) {
+            players[socket.id].ready = true;
+            const allPlayers = Object.values(players);
+            io.emit('updateLobby', allPlayers);
+
+            // Si tout le monde est prêt et qu'il y a au moins 2 joueurs (ou 1 pour tester)
+            const readyCount = allPlayers.filter(p => p.ready).length;
+            if (readyCount === allPlayers.length && !gameStarted) {
+                gameStarted = true;
+                io.emit('gameStart');
+                chargerNouvelleQuestion();
+            }
         }
-        const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-        io.emit('updateLeaderboard', sorted);
     });
 
     socket.on('submitAnswer', (data) => {
-        if (players[socket.id]) {
-            if (data.isCorrect) {
-                players[socket.id].score += 150;
-            } else {
-                players[socket.id].score = Math.max(0, players[socket.id].score - 50);
-            }
+        if (players[socket.id] && gameStarted) {
+            if (data.isCorrect) players[socket.id].score += 150;
+            else players[socket.id].score = Math.max(0, players[socket.id].score - 50);
             socket.emit('yourScore', players[socket.id].score);
-            const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-            io.emit('updateLeaderboard', sorted);
+            io.emit('updateLeaderboard', Object.values(players).sort((a, b) => b.score - a.score));
         }
     });
 
     socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            delete players[socket.id];
-            const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-            io.emit('updateLeaderboard', sorted);
-        }
+        delete players[socket.id];
+        io.emit('updateLobby', Object.values(players));
+        if (Object.keys(players).length === 0) gameStarted = false;
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 http.listen(PORT, '0.0.0.0', () => {
     console.log(`Serveur actif sur le port ${PORT}`);
 });
