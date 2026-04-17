@@ -61,10 +61,14 @@ function startTimer() {
 function terminerPartie() {
     gameStarted = false;
     const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-    const gagnant = sorted[0] ? sorted[0].username : "Personne";
-    io.emit('gameOver', { winner: gagnant, leaderboard: sorted });
+    const winnerName = sorted[0] ? sorted[0].username : "Inconnu";
+    io.emit('gameOver', { winner: winnerName, leaderboard: sorted });
+    
     questionCount = 0;
-    Object.keys(players).forEach(id => { players[id].ready = false; players[id].score = 0; });
+    Object.keys(players).forEach(id => {
+        players[id].ready = false;
+        players[id].score = 0;
+    });
 }
 
 io.on('connection', (socket) => {
@@ -104,5 +108,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 10000;
 http.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur actif sur le port ${PORT}`);
+    console.log(`Serveur NEON actif sur le port ${PORT}`);
 });
