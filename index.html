@@ -8,86 +8,59 @@
     <style>
         :root { --neon: #00f2ff; --pink: #ff0055; --green: #39ff14; --bg: #020008; }
         body { margin:0; background:var(--bg); color:#fff; font-family:'Rajdhani'; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
-        
-        /* Fond animé Badass */
         .grid { position:fixed; top:0; left:0; width:100%; height:100%; background-image: linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: top; animation: move 2s linear infinite; z-index:-1; }
         @keyframes move { from { background-position: 0 0; } to { background-position: 0 40px; } }
-
-        #app { width:90%; max-width:850px; background:rgba(5, 5, 20, 0.95); border:3px solid var(--neon); padding:30px; text-align:center; box-shadow: 0 0 30px var(--neon), inset 0 0 20px rgba(0,242,255,0.2); position:relative; }
+        #app { width:90%; max-width:850px; background:rgba(5, 5, 20, 0.95); border:3px solid var(--neon); padding:30px; text-align:center; box-shadow: 0 0 30px var(--neon); position:relative; }
         .hidden { display:none !important; }
-        
-        h1 { font-family:'Orbitron'; font-weight:900; letter-spacing:5px; text-shadow: 0 0 20px var(--neon); color:var(--neon); margin:0 0 20px 0; }
-        
+        h1 { font-family:'Orbitron'; font-weight:900; letter-spacing:5px; text-shadow: 0 0 20px var(--neon); color:var(--neon); }
         .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:25px 0; }
         button { background:transparent; border:2px solid var(--neon); color:var(--neon); padding:18px; font-family:'Orbitron'; font-weight:700; cursor:pointer; text-transform:uppercase; transition:0.2s; }
-        button:hover:not(:disabled) { background:rgba(0,242,255,0.1); box-shadow:0 0 15px var(--neon); }
-        
-        /* Correction couleurs : Le vert prime toujours sur le reste */
-        .correct { background:var(--green) !important; color:#000 !important; border-color:white !important; box-shadow:0 0 25px var(--green) !important; font-weight:900; }
+        .correct { background:var(--green) !important; color:#000 !important; border-color:white !important; box-shadow:0 0 25px var(--green) !important; }
         .wrong { background:var(--pink) !important; color:#fff !important; border-color:white !important; box-shadow:0 0 25px var(--pink) !important; }
-
         #timer-container { height:8px; width:100%; background:rgba(255,255,255,0.1); position:absolute; top:0; left:0; }
-        #timer-bar { height:100%; width:100%; background:var(--neon); box-shadow:0 0 15px var(--neon); transition:width 1s linear; }
-        
-        #xp-display { font-family:'Orbitron'; font-size:2rem; color:var(--pink); text-shadow: 0 0 10px var(--pink); margin-top:15px; }
-        #chat-box { height:120px; overflow-y:auto; background:rgba(0,0,0,0.3); margin-top:20px; padding:10px; text-align:left; border-top:1px solid var(--neon); font-size:0.9rem; }
+        #timer-bar { height:100%; width:100%; background:var(--neon); transition:width 1s linear; }
+        #xp-display { font-family:'Orbitron'; font-size:2rem; color:var(--pink); }
     </style>
 </head>
 <body>
 <div class="grid"></div>
-
 <div id="app">
     <div id="timer-container"><div id="timer-bar"></div></div>
-
     <div id="screen-join">
         <h1>NEON PULSE</h1>
-        <input type="text" id="nick" placeholder=">> ENTER NICKNAME" style="width:70%; padding:15px; background:rgba(0,0,0,0.5); border:2px solid var(--neon); color:white; font-family:'Orbitron'; text-align:center; margin-bottom:20px;">
-        <br>
-        <button onclick="join()" style="width:50%; border-color:var(--pink); color:var(--pink);">INITIALIZE ACCESS</button>
+        <input type="text" id="nick" placeholder=">> ENTER NICKNAME" style="width:70%; padding:15px; background:rgba(0,0,0,0.5); border:2px solid var(--neon); color:white; text-align:center; margin-bottom:20px;">
+        <br><button onclick="join()">INITIALIZE ACCESS</button>
     </div>
-
     <div id="screen-lobby" class="hidden">
-        <h2 id="host-msg" style="color:var(--neon)">AWAITING AUTHORIZATION...</h2>
-        <div id="player-list" style="margin:20px 0; font-size:1.2rem;"></div>
-        <button id="start-btn" class="hidden" onclick="start()" style="border-color:var(--green); color:var(--green);">EXECUTE PROTOCOL [50]</button>
+        <h2 id="host-msg" style="color:var(--neon)">AWAITING...</h2>
+        <div id="player-list"></div>
+        <button id="start-btn" class="hidden" onclick="start()">EXECUTE PROTOCOL</button>
     </div>
-
     <div id="screen-game" class="hidden">
-        <div id="streak-msg" style="height:30px; color:gold; font-weight:700; font-size:1.2rem;"></div>
-        <h2 id="q-text" style="min-height:80px; display:flex; align-items:center; justify-content:center;">...LOADING DATA...</h2>
+        <div id="streak-msg" style="height:30px; color:gold;"></div>
+        <h2 id="q-text" style="min-height:80px;">LOADING...</h2>
         <div id="choices" class="btn-grid"></div>
         <div id="xp-display">XP: <span id="xp-val">0000</span></div>
     </div>
-
-    <div id="chat-box"></div>
-    <input type="text" id="chat-in" placeholder=">> TYPE MESSAGE..." style="width:100%; background:none; border:none; border-bottom:1px solid #333; color:#00f2ff; padding:10px; outline:none; font-family:monospace;">
 </div>
-
 <audio id="audio-player"></audio>
-
 <script>
     const socket = io();
     let currentCorrect = "";
-    
-    // Playlist Electro Futuriste
-    const playlist = [
-        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"
-    ];
+    const playlist = ["https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"];
     let trackIndex = 0;
     const player = document.getElementById('audio-player');
 
     function playNext() {
         player.src = playlist[trackIndex];
-        player.volume = 0.2;
-        player.play().catch(e => console.log("Clic requis pour l'audio"));
+        player.volume = 0.15;
+        player.play().catch(e => {});
         trackIndex = (trackIndex + 1) % playlist.length;
     }
     player.onended = playNext;
 
     function join() {
-        const n = document.getElementById('nick').value || "RECRUIT_" + Math.floor(Math.random()*99);
+        const n = document.getElementById('nick').value || "RECRUIT";
         socket.emit('joinGame', n);
         playNext();
         document.getElementById('screen-join').classList.add('hidden');
@@ -97,18 +70,12 @@
     function start() { socket.emit('startGameRequest'); }
 
     socket.on('hostStatus', (isHost) => {
-        const btn = document.getElementById('start-btn');
-        const msg = document.getElementById('host-msg');
-        if(isHost) {
-            btn.classList.remove('hidden');
-            msg.innerText = ">> YOU ARE PRIMARY OPERATOR";
-        } else {
-            msg.innerText = ">> AWAITING OPERATOR...";
-        }
+        document.getElementById('start-btn').className = isHost ? "" : "hidden";
+        document.getElementById('host-msg').innerText = isHost ? ">> PRIMARY OPERATOR" : ">> AWAITING OPERATOR...";
     });
 
     socket.on('updateLobby', (players) => {
-        document.getElementById('player-list').innerHTML = players.map(p => `<div>> ${p.username}: ${p.score} XP</div>`).join('');
+        document.getElementById('player-list').innerHTML = players.map(p => `<div>${p.username}: ${p.score} XP</div>`).join('');
     });
 
     socket.on('gameStart', () => {
@@ -125,55 +92,29 @@
             const b = document.createElement('button');
             b.innerText = c;
             b.onclick = () => {
-                highlight(b, c === currentCorrect);
-                socket.emit('submitAnswer', { isCorrect: c === currentCorrect });
+                highlight(b);
+                socket.emit('submitAnswer', { isCorrect: c.trim().toLowerCase() === currentCorrect.trim().toLowerCase() });
             };
             container.appendChild(b);
         });
     });
 
-    // LA FONCTION CRUCIALE CORRIGÉE
-    function highlight(clickedBtn, isOk) {
-        const allBtns = document.querySelectorAll('#choices button');
-        allBtns.forEach(b => {
+    function highlight(clickedBtn) {
+        document.querySelectorAll('#choices button').forEach(b => {
             b.disabled = true;
-            // On vérifie le texte de chaque bouton par rapport à la réponse correcte
-            if (b.innerText === currentCorrect) {
+            // Comparaison propre pour forcer le vert
+            if (b.innerText.trim().toLowerCase() === currentCorrect.trim().toLowerCase()) {
                 b.classList.add('correct');
+            } else if (b === clickedBtn) {
+                b.classList.add('wrong');
             }
         });
-        // Si on a cliqué sur le mauvais bouton, on le met en rose
-        if(clickedBtn && !isOk) {
-            clickedBtn.classList.add('wrong');
-        }
     }
 
     socket.on('timerUpdate', (t) => document.getElementById('timer-bar').style.width = (t/15)*100 + "%");
-    socket.on('timeUp', (ans) => {
-        currentCorrect = ans; // Sécurité supplémentaire
-        highlight(null, false);
-    });
-    
-    socket.on('yourScore', (s) => {
-        document.getElementById('xp-val').innerText = s.toString().padStart(4, '0');
-    });
-    
-    socket.on('feedback', (f) => {
-        document.getElementById('streak-msg').innerText = f.streak >= 3 ? "🔥 STREAK X" + f.streak + " ACTIVATED" : "";
-    });
-
-    // CHAT
-    document.getElementById('chat-in').onkeypress = (e) => {
-        if(e.key === 'Enter' && e.target.value.trim()) {
-            socket.emit('chatMessage', e.target.value);
-            e.target.value = "";
-        }
-    };
-    socket.on('chat', (m) => {
-        const box = document.getElementById('chat-box');
-        box.innerHTML += `<div><span style="color:var(--neon)">[${m.user}]:</span> ${m.text}</div>`;
-        box.scrollTop = box.scrollHeight;
-    });
+    socket.on('timeUp', (ans) => { if(ans) currentCorrect = ans; highlight(null); });
+    socket.on('yourScore', (s) => document.getElementById('xp-val').innerText = s.toString().padStart(4, '0'));
+    socket.on('feedback', (f) => document.getElementById('streak-msg').innerText = f.streak >= 3 ? "🔥 STREAK X" + f.streak : "");
 </script>
 </body>
 </html>
