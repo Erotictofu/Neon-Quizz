@@ -8,7 +8,7 @@ const path = require('path');
 // On dit au serveur que les fichiers sont à la racine
 app.use(express.static(__dirname));
 
-// CETTE LIGNE EST LA CORRECTION : on supprime le dossier '/src/'
+// CETTE LIGNE EST LA CORRECTION : on pointe directement sur index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
