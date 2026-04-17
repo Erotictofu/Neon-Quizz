@@ -16,16 +16,27 @@ let currentQuestion = null;
 let timeLeft = 15;
 let timerInterval = null;
 let gameStarted = false;
+let questionCount = 0;
+const MAX_QUESTIONS = 50;
 
 async function chargerNouvelleQuestion() {
+    if (questionCount >= MAX_QUESTIONS) {
+        terminerPartie();
+        return;
+    }
+
     try {
         const response = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
         const q = response.data[0];
+        questionCount++;
+        
         currentQuestion = {
             text: q.question.text,
             choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
-            correct: q.correctAnswer
+            correct: q.correctAnswer,
+            number: questionCount
         };
+
         timeLeft = 15;
         io.emit('nextQuestion', currentQuestion);
         startTimer();
@@ -47,6 +58,15 @@ function startTimer() {
     }, 1000);
 }
 
+function terminerPartie() {
+    gameStarted = false;
+    const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+    const gagnant = sorted[0] ? sorted[0].username : "Personne";
+    io.emit('gameOver', { winner: gagnant, leaderboard: sorted });
+    questionCount = 0;
+    Object.keys(players).forEach(id => { players[id].ready = false; players[id].score = 0; });
+}
+
 io.on('connection', (socket) => {
     socket.on('joinGame', (username) => {
         players[socket.id] = { username, score: 0, ready: false };
@@ -58,7 +78,6 @@ io.on('connection', (socket) => {
             players[socket.id].ready = true;
             const allPlayers = Object.values(players);
             io.emit('updateLobby', allPlayers);
-
             const readyCount = allPlayers.filter(p => p.ready).length;
             if (readyCount === allPlayers.length && allPlayers.length > 0 && !gameStarted) {
                 gameStarted = true;
@@ -78,11 +97,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            delete players[socket.id];
-            io.emit('updateLobby', Object.values(players));
-            if (Object.keys(players).length === 0) gameStarted = false;
-        }
+        delete players[socket.id];
+        io.emit('updateLobby', Object.values(players));
     });
 });
 
