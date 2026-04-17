@@ -12,15 +12,15 @@
         @keyframes move { from { background-position: 0 0; } to { background-position: 0 40px; } }
         #app { width:90%; max-width:850px; background:rgba(5, 5, 20, 0.95); border:3px solid var(--neon); padding:30px; text-align:center; box-shadow: 0 0 30px var(--neon); position:relative; }
         .hidden { display:none !important; }
-        h1 { font-family:'Orbitron'; font-weight:900; letter-spacing:5px; text-shadow: 0 0 20px var(--neon); color:var(--neon); }
+        h1 { font-family:'Orbitron'; font-weight:900; letter-spacing:5px; text-shadow: 0 0 20px var(--neon); color:var(--neon); margin-bottom: 30px; }
         .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:25px 0; }
-        button { background:transparent; border:2px solid var(--neon); color:var(--neon); padding:18px; font-family:'Orbitron'; font-weight:700; cursor:pointer; text-transform:uppercase; transition:0.2s; outline:none; }
-        button:hover { background: rgba(0, 242, 255, 0.1); }
+        button { background:transparent; border:2px solid var(--neon); color:var(--neon); padding:18px; font-family:'Orbitron'; font-weight:700; cursor:pointer; text-transform:uppercase; transition:0.2s; }
+        button:disabled { cursor: default; }
         .correct { background:var(--green) !important; color:#000 !important; border-color:white !important; box-shadow:0 0 25px var(--green) !important; }
         .wrong { background:var(--pink) !important; color:#fff !important; border-color:white !important; box-shadow:0 0 25px var(--pink) !important; }
         #timer-container { height:8px; width:100%; background:rgba(255,255,255,0.1); position:absolute; top:0; left:0; }
-        #timer-bar { height:100%; width:100%; background:var(--neon); transition: width 1s linear; }
-        #xp-display { font-family:'Orbitron'; font-size:2rem; color:var(--pink); }
+        #timer-bar { height:100%; width:100%; background:var(--neon); transition:width 1s linear; }
+        #xp-display { font-family:'Orbitron'; font-size:2rem; color:var(--pink); margin-top: 20px; }
         input { width:70%; padding:15px; background:rgba(0,0,0,0.5); border:2px solid var(--neon); color:white; text-align:center; margin-bottom:20px; font-family: 'Rajdhani'; font-size: 1.2rem; }
     </style>
 </head>
@@ -36,14 +36,14 @@
     </div>
 
     <div id="screen-lobby" class="hidden">
-        <h2 id="host-msg" style="color:var(--neon)">AWAITING...</h2>
-        <div id="player-list" style="margin-bottom: 20px;"></div>
+        <h2 id="host-msg" style="color:var(--neon)">AWAITING OPERATOR...</h2>
+        <div id="player-list" style="margin: 20px 0; font-size: 1.2rem;"></div>
         <button id="start-btn" class="hidden" onclick="start()">EXECUTE PROTOCOL</button>
     </div>
 
     <div id="screen-game" class="hidden">
         <div id="streak-msg" style="height:30px; color:gold; font-weight: bold;"></div>
-        <h2 id="q-text" style="min-height:80px; font-family:'Orbitron';">LOADING...</h2>
+        <h2 id="q-text" style="min-height:80px; font-family:'Orbitron';">SYNCING...</h2>
         <div id="choices" class="btn-grid"></div>
         <div id="xp-display">XP: <span id="xp-val">0000</span></div>
     </div>
@@ -70,7 +70,8 @@
 
     socket.on('updateLobby', (players) => {
         document.getElementById('player-list').innerHTML = players
-            .map(p => `<div style="padding:5px;">${p.username} : <span style="color:var(--green)">${p.score} XP</span></div>`)
+            .sort((a,b) => b.score - a.score)
+            .map(p => `<div>${p.username} : <span style="color:var(--green)">${p.score} XP</span></div>`)
             .join('');
     });
 
