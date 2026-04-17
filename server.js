@@ -13,13 +13,10 @@ let questionCount = 0;
 let timerInterval = null;
 
 async function nextQuestion() {
-    // Nettoyage systématique du timer précédent
     if (timerInterval) clearInterval(timerInterval);
-
     if (questionCount >= 50) {
-        io.emit('gameOver');
+        io.emit('gameOver', Object.values(players).sort((a,b) => b.score - a.score)[0]);
         gameStarted = false;
-        questionCount = 0;
         return;
     }
 
@@ -27,31 +24,25 @@ async function nextQuestion() {
         const res = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
         const q = res.data[0];
         questionCount++;
-
         currentQuestion = {
             text: q.question.text,
             choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
             correct: q.correctAnswer,
-            startTime: Date.now()
+            startTime: Date.now() // Top chrono pour la vitesse
         };
-
         io.emit('nextQuestion', currentQuestion);
         
         let timeLeft = 15;
         timerInterval = setInterval(() => {
             timeLeft--;
             io.emit('timerUpdate', timeLeft);
-            
             if(timeLeft <= 0) {
                 clearInterval(timerInterval);
                 io.emit('timeUp', currentQuestion.correct);
-                // On attend 4 secondes avant la suite pour laisser voir le VERT
-                setTimeout(nextQuestion, 4000);
+                setTimeout(nextQuestion, 3000);
             }
         }, 1000);
-
     } catch (e) {
-        console.log("Erreur API, nouvelle tentative...");
         setTimeout(nextQuestion, 2000);
     }
 }
@@ -59,16 +50,15 @@ async function nextQuestion() {
 io.on('connection', (socket) => {
     socket.on('joinGame', (name) => {
         const isHost = Object.keys(players).length === 0;
-        players[socket.id] = { username: name, score: 0, isHost: isHost };
+        // On initialise le score et la streak
+        players[socket.id] = { username: name, score: 0, streak: 0, isHost: isHost };
         socket.emit('hostStatus', isHost);
-        io.emit('updateLobby', Object.values(players));
+        io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
     });
 
     socket.on('startGameRequest', () => {
         if (!gameStarted) {
             gameStarted = true;
-            questionCount = 0;
-            io.emit('gameStart');
             nextQuestion();
         }
     });
@@ -78,25 +68,31 @@ io.on('connection', (socket) => {
         if (!p || !currentQuestion) return;
 
         if (data.isCorrect) {
-            p.score += 100;
-            socket.emit('feedback', true);
+            // CALCUL DES POINTS : Base 100 + Bonus Vitesse (max 150)
+            const timeTaken = (Date.now() - currentQuestion.startTime) / 1000;
+            const speedBonus = Math.max(0, Math.round((15 - timeTaken) * 10));
+            let pointsGagnes = 100 + speedBonus;
+
+            // BONUS DE SÉRIE (Streak)
+            p.streak++;
+            if (p.streak >= 3) pointsGagnes = Math.round(pointsGagnes * 1.5); // +50% dès 3 bonnes rép.
+            if (p.streak >= 5) pointsGagnes = pointsGagnes * 2; // x2 dès 5 bonnes rép.
+
+            p.score += pointsGagnes;
+            socket.emit('feedback', { correct: true, points: pointsGagnes, streak: p.streak });
         } else {
-            p.score = Math.max(0, p.score - 50);
-            socket.emit('feedback', false);
+            p.score = Math.max(0, p.score - 50); // Malus
+            p.streak = 0; // On brise la série
+            socket.emit('feedback', { correct: false, points: -50, streak: 0 });
         }
-        socket.emit('yourScore', p.score);
-        io.emit('updateLobby', Object.values(players));
+        
+        // Mise à jour du classement pour tout le monde
+        io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
     });
 
     socket.on('disconnect', () => {
-        const wasHost = players[socket.id]?.isHost;
         delete players[socket.id];
-        if (wasHost && Object.keys(players).length > 0) {
-            const nextId = Object.keys(players)[0];
-            players[nextId].isHost = true;
-            io.to(nextId).emit('hostStatus', true);
-        }
-        io.emit('updateLobby', Object.values(players));
+        io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
     });
 });
 
