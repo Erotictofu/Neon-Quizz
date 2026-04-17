@@ -3,29 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infinity Pulse V3 - Host Mode</title>
+    <title>Infinity Pulse V3 - Silent Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #020008; --panel: #050510; --neon-blue: #00f2ff; --neon-pink: #ff0055; --neon-green: #39ff14; --text: #e0e0ff; }
         body { font-family: 'Rajdhani', sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
         #main-wrapper { display: flex; gap: 20px; width: 95%; max-width: 1100px; height: 650px; }
-        
         #quiz-container { flex: 2; background: var(--panel); padding: 2rem; border-radius: 10px; border: 2px solid var(--neon-blue); box-shadow: 0 0 30px rgba(0, 242, 255, 0.2); text-align: center; position: relative; display: flex; flex-direction: column; }
-        #chat-container { flex: 1; background: var(--panel); border: 1px solid var(--neon-blue); border-radius: 10px; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
-        
+        #chat-container { flex: 1; background: var(--panel); border: 1px solid var(--neon-blue); border-radius: 10px; display: flex; flex-direction: column; height: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.9rem; }
         #chat-input-area { display: flex; border-top: 1px solid var(--neon-blue); }
         #chat-input { background: transparent; border: none; color: white; padding: 12px; flex: 1; outline: none; }
-        
         #timer-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); position: absolute; top: 0; left: 0; }
         #timer-bar { width: 100%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); transition: width 1s linear; }
-        
         .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         button { background: rgba(0, 242, 255, 0.05); color: var(--neon-blue); border: 1px solid var(--neon-blue); padding: 15px; font-family: 'Orbitron'; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         
-        /* COULEURS DES RÉPONSES */
-        button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: var(--neon-green) !important; box-shadow: 0 0 20px var(--neon-green); }
-        button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: var(--neon-pink) !important; box-shadow: 0 0 20px var(--neon-pink); }
+        /* Styles de révélation */
+        button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: var(--neon-green) !important; box-shadow: 0 0 20px var(--neon-green); opacity: 1 !important; }
+        button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: var(--neon-pink) !important; box-shadow: 0 0 20px var(--neon-pink); opacity: 1 !important; }
         
         input[type="text"] { background: rgba(0, 242, 255, 0.05); border: 1px solid var(--neon-blue); padding: 12px; color: var(--neon-blue); text-align: center; font-family: 'Orbitron'; width: 80%; margin-bottom: 20px; }
         .hidden { display: none !important; }
@@ -45,7 +41,7 @@
                 <button onclick="joinLobby()" style="width:100%; border-color: var(--neon-pink); color: var(--neon-pink);">REJOINDRE</button>
             </div>
             <div id="lobby-zone" class="hidden">
-                <p id="host-msg" style="color:var(--neon-blue); margin-bottom:10px;">EN ATTENTE DU CHEF...</p>
+                <p id="host-msg" style="color:var(--neon-blue); margin-bottom:10px;">EN ATTENTE...</p>
                 <div id="lobby-list" style="margin-bottom:20px; border: 1px dashed var(--neon-blue); padding:10px;"></div>
                 <button id="start-btn" onclick="requestStart()" class="hidden" style="width:100%; border-color: var(--neon-green); color: var(--neon-green);">LANCER LA PARTIE ⚡</button>
             </div>
@@ -62,7 +58,7 @@
         <div id="winner-screen" class="hidden">
             <h1 style="color:gold;">👑 CHAMPION</h1>
             <h2 id="winner-name" style="font-size: 2.5rem; color: var(--neon-blue);">---</h2>
-            <button onclick="location.reload()" style="margin-top:20px;">RETOUR AU MENU</button>
+            <button onclick="location.reload()">RETOUR AU MENU</button>
         </div>
     </div>
 
@@ -75,9 +71,6 @@
 </div>
 
 <audio id="bgm" loop></audio>
-<audio id="sfx-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
-<audio id="sfx-wrong" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
-<audio id="sfx-tick" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -102,10 +95,10 @@
         const msg = document.getElementById("host-msg");
         if(isHost) {
             btn.classList.remove("hidden");
-            msg.innerText = "VOUS ÊTES LE CHEF DU RÉSEAU";
+            msg.innerText = "VOUS ÊTES LE CHEF";
         } else {
             btn.classList.add("hidden");
-            msg.innerText = "EN ATTENTE DU CHEF DU RÉSEAU...";
+            msg.innerText = "ATTENTE DU CHEF...";
         }
     });
 
@@ -142,25 +135,32 @@
 
     socket.on('timerUpdate', (time) => {
         document.getElementById("timer-bar").style.width = (time/15)*100 + "%";
-        if(time <= 3 && time > 0) document.getElementById("sfx-tick").play();
     });
 
+    // En cas de temps écoulé
+    socket.on('timeUp', () => reveal(null, false));
+
     socket.on('feedback', (data) => {
-        if(data.type === 'correct') {
-            document.getElementById("sfx-correct").play();
-            if(data.streak >= 3) document.getElementById("streak-info").innerText = "SÉRIE X" + data.streak + " ! 🔥";
-        } else {
-            document.getElementById("sfx-wrong").play();
+        if(data.type === 'correct' && data.streak >= 3) {
+            document.getElementById("streak-info").innerText = "SÉRIE X" + data.streak + " ! 🔥";
+        } else if (data.type === 'wrong') {
             document.getElementById("streak-info").innerText = "";
         }
     });
 
-    function reveal(btn, ok) {
-        document.querySelectorAll('#options button').forEach(b => {
+    function reveal(clickedBtn, isCorrect) {
+        const buttons = document.querySelectorAll('#options button');
+        buttons.forEach(b => {
             b.disabled = true;
-            if(b.innerText === currentCorrectAnswer) b.classList.add('correct');
+            // ICI : On force l'affichage du vert sur la bonne réponse pour TOUT LE MONDE
+            if (b.innerText === currentCorrectAnswer) {
+                b.classList.add('correct');
+            }
         });
-        if(btn && !ok) btn.classList.add('wrong');
+        // Si le bouton cliqué est faux, on le met en rouge
+        if (clickedBtn && !isCorrect) {
+            clickedBtn.classList.add('wrong');
+        }
     }
 
     socket.on('yourScore', (score) => document.getElementById("score-val").innerText = score.toString().padStart(4, '0'));
