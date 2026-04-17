@@ -24,19 +24,17 @@ async function chargerNouvelleQuestion() {
         terminerPartie();
         return;
     }
-
     try {
         const response = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
         const q = response.data[0];
         questionCount++;
-        
         currentQuestion = {
             text: q.question.text,
             choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
             correct: q.correctAnswer,
-            number: questionCount
+            number: questionCount,
+            startTime: Date.now()
         };
-
         timeLeft = 15;
         io.emit('nextQuestion', currentQuestion);
         startTimer();
@@ -61,19 +59,14 @@ function startTimer() {
 function terminerPartie() {
     gameStarted = false;
     const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-    const winnerName = sorted[0] ? sorted[0].username : "Inconnu";
-    io.emit('gameOver', { winner: winnerName, leaderboard: sorted });
-    
+    io.emit('gameOver', { winner: sorted[0]?.username || "Inconnu", leaderboard: sorted });
     questionCount = 0;
-    Object.keys(players).forEach(id => {
-        players[id].ready = false;
-        players[id].score = 0;
-    });
+    Object.keys(players).forEach(id => { players[id].ready = false; players[id].score = 0; players[id].streak = 0; });
 }
 
 io.on('connection', (socket) => {
     socket.on('joinGame', (username) => {
-        players[socket.id] = { username, score: 0, ready: false };
+        players[socket.id] = { username, score: 0, ready: false, streak: 0 };
         io.emit('updateLobby', Object.values(players));
     });
 
@@ -82,8 +75,7 @@ io.on('connection', (socket) => {
             players[socket.id].ready = true;
             const allPlayers = Object.values(players);
             io.emit('updateLobby', allPlayers);
-            const readyCount = allPlayers.filter(p => p.ready).length;
-            if (readyCount === allPlayers.length && allPlayers.length > 0 && !gameStarted) {
+            if (allPlayers.every(p => p.ready) && allPlayers.length > 0 && !gameStarted) {
                 gameStarted = true;
                 io.emit('gameStart');
                 setTimeout(chargerNouvelleQuestion, 2000);
@@ -92,12 +84,27 @@ io.on('connection', (socket) => {
     });
 
     socket.on('submitAnswer', (data) => {
-        if (players[socket.id] && gameStarted) {
-            if (data.isCorrect) players[socket.id].score += 150;
-            else players[socket.id].score = Math.max(0, players[socket.id].score - 50);
-            socket.emit('yourScore', players[socket.id].score);
+        const p = players[socket.id];
+        if (p && gameStarted) {
+            if (data.isCorrect) {
+                const timeTaken = (Date.now() - currentQuestion.startTime) / 1000;
+                let points = Math.round(150 + (Math.max(0, 15 - timeTaken) * 6.6)); // Bonus rapidité max +100
+                p.streak++;
+                if (p.streak >= 3) points = Math.round(points * 1.5); // Multiplicateur série
+                p.score += points;
+                socket.emit('feedback', { type: 'correct', points, streak: p.streak });
+            } else {
+                p.score = Math.max(0, p.score - 50);
+                p.streak = 0;
+                socket.emit('feedback', { type: 'wrong', points: -50, streak: 0 });
+            }
             io.emit('updateLeaderboard', Object.values(players).sort((a, b) => b.score - a.score));
         }
+    });
+
+    socket.on('chatMessage', (msg) => {
+        const p = players[socket.id];
+        if (p) io.emit('newChatMessage', { user: p.username, text: msg });
     });
 
     socket.on('disconnect', () => {
@@ -107,6 +114,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur NEON actif sur le port ${PORT}`);
-});
+http.listen(PORT, '0.0.0.0', () => console.log(`Serveur PRO actif sur ${PORT}`));
