@@ -3,7 +3,6 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const axios = require('axios');
-const path = require('path');
 
 app.use(express.static(__dirname));
 
@@ -25,7 +24,6 @@ async function nextQuestion() {
         const res = await axios.get('https://the-trivia-api.com/v2/questions?limit=1');
         const q = res.data[0];
         questionCount++;
-        
         currentQuestion = {
             text: q.question.text,
             choices: [...q.incorrectAnswers, q.correctAnswer].sort(() => Math.random() - 0.5),
@@ -33,10 +31,8 @@ async function nextQuestion() {
             number: questionCount,
             startTime: Date.now()
         };
-
         timeLeft = 15;
         io.emit('nextQuestion', currentQuestion);
-        
         clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             timeLeft--;
@@ -61,6 +57,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startGameRequest', () => {
+        console.log("Requête de démarrage reçue de : " + (players[socket.id] ? players[socket.id].username : "Anonyme"));
         if (!gameStarted) {
             gameStarted = true;
             questionCount = 0;
@@ -72,7 +69,6 @@ io.on('connection', (socket) => {
     socket.on('submitAnswer', (data) => {
         const p = players[socket.id];
         if (!p || !currentQuestion) return;
-
         if (data.isCorrect) {
             const speed = Math.max(0, 15 - (Date.now() - currentQuestion.startTime)/1000);
             let pts = Math.round(150 + (speed * 10));
@@ -104,4 +100,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, '0.0.0.0', () => console.log(`Server Online`));
+http.listen(PORT, '0.0.0.0', () => console.log(`SYSTEM ONLINE ON PORT ${PORT}`));
