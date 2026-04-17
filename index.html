@@ -14,55 +14,48 @@
         .hidden { display:none !important; }
         h1 { font-family:'Orbitron'; font-weight:900; letter-spacing:5px; text-shadow: 0 0 20px var(--neon); color:var(--neon); }
         .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:25px 0; }
-        button { background:transparent; border:2px solid var(--neon); color:var(--neon); padding:18px; font-family:'Orbitron'; font-weight:700; cursor:pointer; text-transform:uppercase; transition:0.2s; }
+        button { background:transparent; border:2px solid var(--neon); color:var(--neon); padding:18px; font-family:'Orbitron'; font-weight:700; cursor:pointer; text-transform:uppercase; transition:0.2s; outline:none; }
+        button:hover { background: rgba(0, 242, 255, 0.1); }
         .correct { background:var(--green) !important; color:#000 !important; border-color:white !important; box-shadow:0 0 25px var(--green) !important; }
         .wrong { background:var(--pink) !important; color:#fff !important; border-color:white !important; box-shadow:0 0 25px var(--pink) !important; }
         #timer-container { height:8px; width:100%; background:rgba(255,255,255,0.1); position:absolute; top:0; left:0; }
-        #timer-bar { height:100%; width:100%; background:var(--neon); transition:width 1s linear; }
+        #timer-bar { height:100%; width:100%; background:var(--neon); transition: width 1s linear; }
         #xp-display { font-family:'Orbitron'; font-size:2rem; color:var(--pink); }
+        input { width:70%; padding:15px; background:rgba(0,0,0,0.5); border:2px solid var(--neon); color:white; text-align:center; margin-bottom:20px; font-family: 'Rajdhani'; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 <div class="grid"></div>
 <div id="app">
     <div id="timer-container"><div id="timer-bar"></div></div>
+    
     <div id="screen-join">
         <h1>NEON PULSE</h1>
-        <input type="text" id="nick" placeholder=">> ENTER NICKNAME" style="width:70%; padding:15px; background:rgba(0,0,0,0.5); border:2px solid var(--neon); color:white; text-align:center; margin-bottom:20px;">
+        <input type="text" id="nick" placeholder=">> ENTER NICKNAME">
         <br><button onclick="join()">INITIALIZE ACCESS</button>
     </div>
+
     <div id="screen-lobby" class="hidden">
         <h2 id="host-msg" style="color:var(--neon)">AWAITING...</h2>
-        <div id="player-list"></div>
+        <div id="player-list" style="margin-bottom: 20px;"></div>
         <button id="start-btn" class="hidden" onclick="start()">EXECUTE PROTOCOL</button>
     </div>
+
     <div id="screen-game" class="hidden">
-        <div id="streak-msg" style="height:30px; color:gold;"></div>
-        <h2 id="q-text" style="min-height:80px;">LOADING...</h2>
+        <div id="streak-msg" style="height:30px; color:gold; font-weight: bold;"></div>
+        <h2 id="q-text" style="min-height:80px; font-family:'Orbitron';">LOADING...</h2>
         <div id="choices" class="btn-grid"></div>
         <div id="xp-display">XP: <span id="xp-val">0000</span></div>
     </div>
 </div>
-<audio id="audio-player"></audio>
+
 <script>
     const socket = io();
     let currentCorrect = "";
-    const playlist = ["https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"];
-    let trackIndex = 0;
-    const player = document.getElementById('audio-player');
-
-    function playNext() {
-        player.src = playlist[trackIndex];
-        player.volume = 0.15;
-        player.play().catch(e => {});
-        trackIndex = (trackIndex + 1) % playlist.length;
-    }
-    player.onended = playNext;
 
     function join() {
         const n = document.getElementById('nick').value || "RECRUIT";
         socket.emit('joinGame', n);
-        playNext();
         document.getElementById('screen-join').classList.add('hidden');
         document.getElementById('screen-lobby').classList.remove('hidden');
     }
@@ -70,12 +63,15 @@
     function start() { socket.emit('startGameRequest'); }
 
     socket.on('hostStatus', (isHost) => {
-        document.getElementById('start-btn').className = isHost ? "" : "hidden";
+        const btn = document.getElementById('start-btn');
+        btn.classList.toggle('hidden', !isHost);
         document.getElementById('host-msg').innerText = isHost ? ">> PRIMARY OPERATOR" : ">> AWAITING OPERATOR...";
     });
 
     socket.on('updateLobby', (players) => {
-        document.getElementById('player-list').innerHTML = players.map(p => `<div>${p.username}: ${p.score} XP</div>`).join('');
+        document.getElementById('player-list').innerHTML = players
+            .map(p => `<div style="padding:5px;">${p.username} : <span style="color:var(--green)">${p.score} XP</span></div>`)
+            .join('');
     });
 
     socket.on('gameStart', () => {
@@ -92,8 +88,9 @@
             const b = document.createElement('button');
             b.innerText = c;
             b.onclick = () => {
+                const isRight = c.trim().toLowerCase() === currentCorrect.trim().toLowerCase();
+                socket.emit('submitAnswer', { isCorrect: isRight });
                 highlight(b);
-                socket.emit('submitAnswer', { isCorrect: c.trim().toLowerCase() === currentCorrect.trim().toLowerCase() });
             };
             container.appendChild(b);
         });
@@ -102,7 +99,6 @@
     function highlight(clickedBtn) {
         document.querySelectorAll('#choices button').forEach(b => {
             b.disabled = true;
-            // Comparaison propre pour forcer le vert
             if (b.innerText.trim().toLowerCase() === currentCorrect.trim().toLowerCase()) {
                 b.classList.add('correct');
             } else if (b === clickedBtn) {
@@ -111,10 +107,22 @@
         });
     }
 
-    socket.on('timerUpdate', (t) => document.getElementById('timer-bar').style.width = (t/15)*100 + "%");
-    socket.on('timeUp', (ans) => { if(ans) currentCorrect = ans; highlight(null); });
-    socket.on('yourScore', (s) => document.getElementById('xp-val').innerText = s.toString().padStart(4, '0'));
-    socket.on('feedback', (f) => document.getElementById('streak-msg').innerText = f.streak >= 3 ? "🔥 STREAK X" + f.streak : "");
+    socket.on('timerUpdate', (t) => {
+        document.getElementById('timer-bar').style.width = (t / 15) * 100 + "%";
+    });
+
+    socket.on('timeUp', (ans) => {
+        currentCorrect = ans;
+        highlight(null);
+    });
+
+    socket.on('yourScore', (s) => {
+        document.getElementById('xp-val').innerText = s.toString().padStart(4, '0');
+    });
+
+    socket.on('feedback', (f) => {
+        document.getElementById('streak-msg').innerText = f.streak >= 2 ? "🔥 STREAK X" + f.streak : "";
+    });
 </script>
 </body>
 </html>
