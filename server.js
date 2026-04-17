@@ -5,11 +5,10 @@ const io = require('socket.io')(http);
 const axios = require('axios');
 const path = require('path');
 
-// On sert les fichiers statiques depuis la racine
 app.use(express.static(__dirname));
 
-// Route principale : On pointe directement sur index.html sans le dossier /src/
 app.get('/', (req, res) => {
+    // Cette ligne est la clé : on enlève '/src/'
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -27,7 +26,6 @@ async function chargerNouvelleQuestion() {
         };
         io.emit('nextQuestion', currentQuestion);
     } catch (error) {
-        console.error("Erreur API :", error.message);
         setTimeout(chargerNouvelleQuestion, 2000);
     }
 }
@@ -38,13 +36,10 @@ io.on('connection', (socket) => {
         if (Object.keys(players).length === 1 && !currentQuestion) chargerNouvelleQuestion();
         else if (currentQuestion) socket.emit('nextQuestion', currentQuestion);
     });
-
     socket.on('disconnect', () => { delete players[socket.id]; });
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, '0.0.0.0', () => {
-    console.log('====================================');
-    console.log(`  NEON PULSE ACTIF SUR LE PORT ${PORT} `);
-    console.log('====================================');
+    console.log(`Serveur actif sur le port ${PORT}`);
 });
