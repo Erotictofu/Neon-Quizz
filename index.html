@@ -3,77 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON PULSE - Protocol 50</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <title>NEON PULSE - Fix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Source+Code+Pro&display=swap" rel="stylesheet">
+    
+    <script src="/socket.io/socket.io.js"></script>
+
     <style>
-        :root {
-            --bg: #010005; --panel: rgba(5, 5, 15, 0.95);
-            --neon-blue: #00f2ff; --neon-blue-glow: rgba(0, 242, 255, 0.5);
-            --neon-pink: #ff0055; --neon-pink-glow: rgba(255, 0, 85, 0.5);
-            --neon-green: #39ff14; --neon-green-glow: rgba(57, 255, 20, 0.5);
-            --text: #e0e0ff; --sub-text: #8080ff;
-        }
-
-        /* GRILLE DE FOND ANIMÉE */
-        body {
-            font-family: 'Source Code Pro', monospace; background-color: var(--bg); color: var(--text);
-            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
-            background-image: 
-                linear-gradient(0deg, transparent 24%, rgba(32, 32, 64, 0.3) 25%, rgba(32, 32, 64, 0.3) 26%, transparent 27%, transparent 74%, rgba(32, 32, 64, 0.3) 75%, rgba(32, 32, 64, 0.3) 76%, transparent 77%, transparent),
-                linear-gradient(90deg, transparent 24%, rgba(32, 32, 64, 0.3) 25%, rgba(32, 32, 64, 0.3) 26%, transparent 27%, transparent 74%, rgba(32, 32, 64, 0.3) 75%, rgba(32, 32, 64, 0.3) 76%, transparent 77%, transparent);
-            background-size: 50px 50px; animation: grid-move 10s linear infinite;
-        }
-        @keyframes grid-move { 0% { background-position: 0 0; } 100% { background-position: 50px 50px; } }
-
-        #main-wrapper { 
-            display: flex; gap: 20px; width: 95%; max-width: 1100px; height: 85vh; z-index: 10;
-        }
-
-        /* CONTAINER PRINCIPAL */
-        #quiz-container {
-            flex: 2; background: var(--panel); padding: 2rem; border-radius: 5px;
-            border: 2px solid var(--neon-blue); box-shadow: 0 0 25px var(--neon-blue-glow);
-            text-align: center; position: relative; display: flex; flex-direction: column;
-            clip-path: polygon(0% 0%, 100% 0%, 100% 95%, 95% 100%, 0% 100%);
-        }
-
-        /* CHAT */
-        #chat-container {
-            flex: 1; background: var(--panel); border: 1px solid var(--sub-text); border-radius: 5px;
-            display: flex; flex-direction: column; clip-path: polygon(5% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 5%);
-        }
-        #chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 0.85rem; text-align: left; }
-        #chat-input { background: rgba(255,255,255,0.05); border: none; border-top: 1px solid var(--sub-text); color: white; padding: 12px; outline: none; }
-
-        /* HUD & ÉLÉMENTS */
-        h1 { font-family: 'Orbitron', sans-serif; font-size: 3rem; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); margin-bottom: 30px; }
-        #timer-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); position: absolute; top: 0; left: 0; }
-        #timer-bar { width: 100%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 1s linear; }
-
-        .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        button {
-            background: rgba(0, 242, 255, 0.05); color: var(--neon-blue); border: 2px solid var(--neon-blue);
-            padding: 15px; font-family: 'Orbitron'; font-weight: 700; cursor: pointer; text-transform: uppercase;
-            clip-path: polygon(10% 0%, 100% 0%, 100% 70%, 90% 100%, 0% 100%, 0% 30%); transition: 0.2s;
-        }
-        button:hover:not(:disabled) { background: rgba(0, 242, 255, 0.15); box-shadow: 0 0 15px var(--neon-blue); }
+        :root { --bg: #010005; --neon: #00f2ff; --pink: #ff0055; }
         
-        button.correct { background: var(--neon-green) !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 20px var(--neon-green); }
-        button.wrong { background: var(--neon-pink) !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 20px var(--neon-pink); }
-
-        input[type="text"] {
-            background: rgba(0, 242, 255, 0.1); border: 2px solid var(--neon-blue); padding: 15px;
-            color: var(--neon-blue); text-align: center; font-family: 'Orbitron'; width: 70%; margin-bottom: 20px;
+        body { 
+            background: var(--bg); 
+            color: #e0e0ff; 
+            font-family: 'Source Code Pro', monospace;
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+            overflow: hidden;
+            background-image: linear-gradient(0deg, transparent 24%, rgba(32, 32, 64, 0.3) 25%, rgba(32, 32, 64, 0.3) 26%, transparent 27%);
+            background-size: 50px 50px;
         }
 
-        .hidden { display: none !important; }
-        #score-display { font-family: 'Orbitron'; font-size: 1.8rem; color: var(--neon-pink); margin-top: 20px; }
+        #main-container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(5, 5, 15, 0.9);
+            border: 2px solid var(--neon);
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 0 20px var(--neon);
+            position: relative;
+            z-index: 999; /* Force l'affichage au dessus du fond */
+        }
 
-        @keyframes shake { 0%, 100% { transform: translate(0, 0); } 20%, 60% { transform: translate(-5px, 0); } 40%, 80% { transform: translate(5px, 0); } }
-        .damage-shake { animation: shake 0.3s ease-in-out; }
+        h1 { font-family: 'Orbitron'; color: var(--neon); font-size: 2.5rem; text-shadow: 0 0 10px var(--neon); }
+        
+        input {
+            background: #000; border: 1px solid var(--neon); padding: 15px;
+            color: var(--neon); width: 80%; margin-bottom: 20px; font-family: 'Orbitron';
+        }
+
+        button {
+            background: transparent; border: 2px solid var(--pink); color: var(--pink);
+            padding: 15px 30px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold;
+            text-transform: uppercase; transition: 0.3s;
+        }
+
+        button:hover { background: var(--pink); color: white; }
+        .hidden { display: none !important; }
+
+        .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .choice-btn { border: 1px solid var(--neon); color: var(--neon); }
+        .correct { background: #39ff14 !important; color: black !important; }
+        .wrong { background: #ff0055 !important; color: white !important; }
     </style>
 </head>
 <body>
 
-<div id="main-wrapper">
-    <div id="quiz
+    <div id="main-container">
+        <div id="start-screen">
+            <h1>NEON PULSE</h1>
+            <input type="text" id="username-input" placeholder="CODE NAME...">
+            <br>
+            <button onclick="joinLobby()">INITIALIZE</button>
+            <div id="lobby-zone" class="hidden">
+                <p id="host-msg">CONNECTING...</p>
+                <div id="lobby-list"></div>
+                <button id="start-btn" class="hidden" onclick="requestStart()">START GAME</button>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div id="timer-bar" style="height:5px; background:var(--neon); width:100%; margin-bottom:10px;"></div>
+            <p id="q-info">QUESTION <span id="q-num">1</span>/50</p>
+            <h3 id="question-text">CHARGEMENT...</h3>
+            <div id="options-container" class="btn-stack"></div>
+            <h2 id="score-display">XP: <span id="score-val">0000</span></h2>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentCorrectAnswer = "";
+
+        function joinLobby() {
+            const name = document.getElementById("username-input").value || "UNIT_" + Math.floor(Math.random()*99);
+            document.getElementById("username-input").classList.add("hidden");
+            document.querySelector("#start-screen button").classList.add("hidden");
+            document.getElementById("lobby-zone").classList.remove("hidden");
+            socket.emit('joinGame', name);
+        }
+
+        socket.on('hostStatus', (isHost) => {
+            if(isHost) {
+                document.getElementById("start-btn").classList.remove("hidden");
+                document.getElementById("host-msg").innerText = "YOU ARE THE HOST";
+            } else {
+                document.getElementById("host-msg").innerText = "WAITING FOR HOST...";
+            }
+        });
+
+        function requestStart() { socket.emit('startGameRequest'); }
+
+        socket.on('updateLobby', (players) => {
+            document.getElementById("lobby-list").innerHTML = players.map(p => `<div>${p.username}</div>`).join('');
+        });
+
+        socket.on('gameStart', () => {
+            document.getElementById("start-screen").classList.add("hidden");
+            document.getElementById("game-screen").classList.remove("hidden");
+        });
+
+        socket.on('nextQuestion', (qData) => {
+            currentCorrectAnswer = qData.correct;
+            document.getElementById("q-num").innerText = qData.number;
+            document.getElementById("question-text").innerText = qData.text;
+            const container = document.getElementById("options-container");
+            container.innerHTML = "";
+            qData.choices.forEach(choice => {
+                const btn = document.createElement("button");
+                btn.className = "choice-btn";
+                btn.innerText = choice;
+                btn.onclick = () => {
+                    reveal(btn, choice === qData.correct);
+                    socket.emit('submitAnswer', { isCorrect: choice === qData.correct });
+                };
+                container.appendChild(btn);
+            });
+        });
+
+        function reveal(btn, isCorrect) {
+            document.querySelectorAll(".choice-btn").forEach(b => {
+                b.disabled = true;
+                if(b.innerText === currentCorrectAnswer) b.classList.add("correct");
+            });
+            if(btn && !isCorrect) btn.classList.add("wrong");
+        }
+
+        socket.on('yourScore', (s) => document.getElementById("score-val").innerText = s);
+        socket.on('timerUpdate', (t) => document.getElementById("timer-bar").style.width = (t/15)*100 + "%");
+    </script>
+</body>
+</html>
