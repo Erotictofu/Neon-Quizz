@@ -2,95 +2,85 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>NEON PULSE // COMPETITIVE</title>
+    <title>NEON PULSE // ELITE</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { --neon: #00f2ff; --pink: #ff0055; --green: #39ff14; --bg: #020008; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani'; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* Layout */
-        #game-container { flex: 3; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid rgba(0,242,255,0.2); }
-        #sidebar { flex: 1; background: rgba(0,0,0,0.5); padding: 20px; display: flex; flex-direction: column; }
-        
-        .grid { position: fixed; width: 100%; height: 100%; top: 0; left: 0; background-image: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.05; transform: perspective(500px) rotateX(60deg); z-index: -1; }
-
-        /* Éléments UI */
-        #app-box { width: 80%; text-align: center; background: rgba(5,5,20,0.9); padding: 30px; border: 2px solid var(--neon); box-shadow: 0 0 30px rgba(0,242,255,0.2); }
+        #game-side { flex: 3; position: relative; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--neon); }
+        #rank-side { flex: 1; background: rgba(0,0,0,0.8); padding: 20px; border-left: 1px solid var(--neon); }
+        .grid-bg { position: fixed; width: 100%; height: 100%; top:0; left:0; background: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.05; transform: perspective(500px) rotateX(60deg); z-index: -1; }
+        #main-ui { width: 80%; background: rgba(5,5,15,0.95); border: 2px solid var(--neon); padding: 40px; text-align: center; box-shadow: 0 0 40px rgba(0,242,255,0.2); }
         .hidden { display: none !important; }
-        h1 { font-family: 'Orbitron'; font-size: 3rem; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
-        
-        /* Leaderboard */
-        .leaderboard-title { font-family: 'Orbitron'; color: var(--pink); border-bottom: 2px solid var(--pink); padding-bottom: 10px; margin-bottom: 20px; }
-        .player-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #111; animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        .streak-tag { color: gold; font-size: 0.8rem; font-weight: bold; }
-
-        /* Boutons de réponse */
-        .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        button { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 15px; cursor: pointer; font-family: 'Orbitron'; transition: 0.2s; }
-        button:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
-        
-        #timer-bar { position: absolute; top: 0; left: 0; height: 5px; background: var(--pink); width: 100%; transition: width 1s linear; }
-        #feedback-msg { font-family: 'Orbitron'; font-size: 1.2rem; height: 30px; margin-bottom: 10px; }
+        button { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 15px 25px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; margin: 10px; width: 100%; }
+        button:hover:not(:disabled) { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+        #timer-line { position: absolute; top: 0; left: 0; height: 6px; background: var(--pink); width: 100%; transition: width 1s linear; }
+        .player-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #222; font-family: 'Orbitron'; font-size: 0.9rem; }
+        .correct { background: var(--green) !important; color: #000 !important; }
+        .wrong { background: var(--pink) !important; }
     </style>
 </head>
 <body>
-
-<div class="grid"></div>
-
-<div id="game-container">
-    <div id="timer-bar"></div>
-    <div id="feedback-msg"></div>
-
-    <div id="app-box">
+<div class="grid-bg"></div>
+<div id="game-side">
+    <div id="timer-line"></div>
+    <div id="main-ui">
         <div id="view-join">
-            <h1>NEON PULSE</h1>
-            <input type="text" id="nick" placeholder="PILOT_ID" style="padding:15px; width:70%; text-align:center; background:black; color:white; border:1px solid var(--neon);">
+            <h1 style="font-family: Orbitron; font-size: 3rem; color: var(--neon);">NEON PULSE</h1>
+            <input type="text" id="nick" placeholder="PILOT_NAME" style="padding:15px; width:60%; text-align:center; background:black; border:1px solid var(--neon); color:white;">
             <br><br>
-            <button onclick="join()">INITIALIZE ACCESS</button>
+            <button onclick="joinGame()">INITIALIZE NEURAL LINK</button>
         </div>
 
         <div id="view-lobby" class="hidden">
-            <h2 id="host-msg" style="color:var(--neon)">AWAITING SYNC...</h2>
-            <button id="start-btn" class="hidden" onclick="launch()">[ EXECUTE START ]</button>
+            <h2 style="color:var(--neon)">SYSTEM READY</h2>
+            <p>Waiting for operator authorization...</p>
+            <button id="start-btn" class="hidden" onclick="launchGame()">[ EXECUTE START ]</button>
         </div>
 
         <div id="view-game" class="hidden">
-            <h2 id="q-text" style="min-height:80px;">...RETRIEVING DATA...</h2>
-            <div id="choices-area" class="choices-grid"></div>
+            <div id="points-notif" style="height:30px; font-family:Orbitron; color:var(--green)"></div>
+            <h2 id="question-txt" style="min-height:100px;">...</h2>
+            <div id="choices-box" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
         </div>
     </div>
 </div>
 
-<div id="sidebar">
-    <h3 class="leaderboard-title">LIVE RANKING</h3>
-    <div id="leaderboard-content"></div>
+<div id="rank-side">
+    <h3 style="font-family:Orbitron; color:var(--pink); border-bottom:2px solid var(--pink); padding-bottom:10px;">LIVE RANKING</h3>
+    <div id="leaderboard"></div>
 </div>
 
 <script>
     const socket = io();
-    let currentAns = "";
+    let currentCorrect = "";
+    let bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3");
+    bgMusic.loop = true;
+    bgMusic.volume = 0.15;
 
-    function join() {
-        const n = document.getElementById('nick').value || "RECRUIT";
-        socket.emit('joinGame', n);
+    function joinGame() {
+        const name = document.getElementById('nick').value || "PILOT";
+        socket.emit('joinGame', name);
+        bgMusic.play().catch(() => {});
         document.getElementById('view-join').classList.add('hidden');
         document.getElementById('view-lobby').classList.remove('hidden');
     }
 
-    function launch() { socket.emit('startGameRequest'); }
+    function launchGame() {
+        console.log("Launch command sent");
+        socket.emit('startGameRequest');
+    }
 
     socket.on('hostStatus', (isHost) => {
-        document.getElementById('start-btn').classList.toggle('hidden', !isHost);
-        document.getElementById('host-msg').innerText = isHost ? "READY TO START" : "WAITING FOR HOST...";
+        if(isHost) document.getElementById('start-btn').classList.remove('hidden');
     });
 
     socket.on('updateLobby', (players) => {
-        const board = document.getElementById('leaderboard-content');
-        board.innerHTML = players.map((p, index) => `
-            <div class="player-row">
-                <span>#${index+1} ${p.username} ${p.streak >= 3 ? `<span class="streak-tag">🔥${p.streak}</span>` : ''}</span>
+        const lb = document.getElementById('leaderboard');
+        lb.innerHTML = players.map((p, i) => `
+            <div class="player-item">
+                <span>#${i+1} ${p.username} ${p.streak >= 3 ? '🔥' : ''}</span>
                 <span style="color:var(--neon)">${p.score}</span>
             </div>
         `).join('');
@@ -102,47 +92,39 @@
     });
 
     socket.on('nextQuestion', (q) => {
-        currentAns = q.correct;
-        document.getElementById('feedback-msg').innerText = "";
-        document.getElementById('q-text').innerText = q.text;
-        const area = document.getElementById('choices-area');
-        area.innerHTML = "";
+        currentCorrect = q.correct;
+        document.getElementById('points-notif').innerText = "";
+        document.getElementById('question-txt').innerText = q.text;
+        const box = document.getElementById('choices-box');
+        box.innerHTML = "";
         q.choices.forEach(c => {
             const b = document.createElement('button');
             b.innerText = c;
             b.onclick = () => {
-                const isOk = c.trim().toLowerCase() === currentAns.trim().toLowerCase();
+                const isOk = c.trim().toLowerCase() === currentCorrect.trim().toLowerCase();
                 socket.emit('submitAnswer', { isCorrect: isOk });
                 reveal(b);
             };
-            area.appendChild(b);
+            box.appendChild(b);
         });
     });
 
     socket.on('feedback', (data) => {
-        const msg = document.getElementById('feedback-msg');
-        if(data.correct) {
-            msg.innerText = `+${data.points} XP ${data.streak >= 3 ? 'STREAK BONUS!' : ''}`;
-            msg.style.color = "var(--green)";
-        } else {
-            msg.innerText = "-50 XP / STREAK BROKEN";
-            msg.style.color = "var(--pink)";
-        }
+        const notif = document.getElementById('points-notif');
+        notif.innerText = data.correct ? `+${data.points} XP` : "-50 XP";
+        notif.style.color = data.correct ? "var(--green)" : "var(--pink)";
     });
 
     function reveal(clicked) {
-        document.querySelectorAll('#choices-area button').forEach(b => {
+        document.querySelectorAll('#choices-box button').forEach(b => {
             b.disabled = true;
-            if(b.innerText.trim().toLowerCase() === currentAns.trim().toLowerCase()) {
-                b.style.background = "var(--green)"; b.style.color = "#000";
-            } else if(b === clicked) {
-                b.style.background = "var(--pink)";
-            }
+            if(b.innerText.trim().toLowerCase() === currentCorrect.trim().toLowerCase()) b.classList.add('correct');
+            else if(b === clicked) b.classList.add('wrong');
         });
     }
 
-    socket.on('timerUpdate', (t) => document.getElementById('timer-bar').style.width = (t/15)*100 + "%");
-    socket.on('timeUp', (ans) => { if(ans) currentAns = ans; reveal(null); });
+    socket.on('timerUpdate', (t) => document.getElementById('timer-line').style.width = (t/15)*100 + "%");
+    socket.on('timeUp', (ans) => { if(ans) currentCorrect = ans; reveal(null); });
 </script>
 </body>
 </html>
