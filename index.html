@@ -8,123 +8,146 @@
     <style>
         :root { --neon: #00f2ff; --pink: #ff0055; --green: #39ff14; --bg: #020008; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Rajdhani'; display: flex; height: 100vh; overflow: hidden; }
-        #game-side { flex: 3; position: relative; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--neon); }
-        #rank-side { flex: 1; background: rgba(0,0,0,0.8); padding: 20px; border-left: 1px solid var(--neon); }
+        
+        #game-side { flex: 3; position: relative; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(0,242,255,0.3); }
+        #rank-side { flex: 1; background: rgba(0,0,0,0.8); padding: 20px; box-shadow: inset 10px 0 20px rgba(0,0,0,0.5); }
+        
         .grid-bg { position: fixed; width: 100%; height: 100%; top:0; left:0; background: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.05; transform: perspective(500px) rotateX(60deg); z-index: -1; }
-        #main-ui { width: 80%; background: rgba(5,5,15,0.95); border: 2px solid var(--neon); padding: 40px; text-align: center; box-shadow: 0 0 40px rgba(0,242,255,0.2); }
+        
+        #main-ui { width: 85%; max-width: 700px; background: rgba(5,5,15,0.95); border: 2px solid var(--neon); padding: 40px; text-align: center; box-shadow: 0 0 40px rgba(0,242,255,0.2); position: relative; }
+        
         .hidden { display: none !important; }
-        button { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 15px 25px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; margin: 10px; width: 100%; }
+        
+        h1 { font-family: 'Orbitron'; font-size: 3.5rem; color: #fff; text-shadow: 0 0 10px var(--neon); margin: 0; }
+        
+        input { background: #000; border: 1px solid var(--neon); color: #fff; padding: 15px; width: 70%; text-align: center; font-family: 'Orbitron'; font-size: 1.2rem; outline: none; }
+        
+        button { background: rgba(0,242,255,0.05); border: 1px solid var(--neon); color: var(--neon); padding: 15px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px; }
         button:hover:not(:disabled) { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
-        #timer-line { position: absolute; top: 0; left: 0; height: 6px; background: var(--pink); width: 100%; transition: width 1s linear; }
-        .player-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #222; font-family: 'Orbitron'; font-size: 0.9rem; }
-        .correct { background: var(--green) !important; color: #000 !important; }
-        .wrong { background: var(--pink) !important; }
+        
+        #timer-line { position: absolute; top: 0; left: 0; height: 6px; background: var(--pink); width: 100%; transition: width 1s linear; box-shadow: 0 0 10px var(--pink); }
+        
+        .player-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #222; font-family: 'Orbitron'; font-size: 0.9rem; }
+        .correct { background: var(--green) !important; color: #000 !important; border: none !important; }
+        .wrong { background: var(--pink) !important; color: #fff !important; border: none !important; opacity: 0.7; }
+        
+        #points-notif { height: 40px; font-family: 'Orbitron'; font-size: 1.2rem; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-<div class="grid-bg"></div>
-<div id="game-side">
-    <div id="timer-line"></div>
-    <div id="main-ui">
-        <div id="view-join">
-            <h1 style="font-family: Orbitron; font-size: 3rem; color: var(--neon);">NEON PULSE</h1>
-            <input type="text" id="nick" placeholder="PILOT_NAME" style="padding:15px; width:60%; text-align:center; background:black; border:1px solid var(--neon); color:white;">
-            <br><br>
-            <button onclick="joinGame()">INITIALIZE NEURAL LINK</button>
-        </div>
+    <div class="grid-bg"></div>
 
-        <div id="view-lobby" class="hidden">
-            <h2 style="color:var(--neon)">SYSTEM READY</h2>
-            <p>Waiting for operator authorization...</p>
-            <button id="start-btn" class="hidden" onclick="launchGame()">[ EXECUTE START ]</button>
-        </div>
+    <div id="game-side">
+        <div id="timer-line"></div>
+        <div id="main-ui">
+            <div id="view-join">
+                <h1>NEON PULSE</h1>
+                <p style="color: var(--neon); letter-spacing: 2px;">SECURE CONNECTION REQUIRED</p>
+                <input type="text" id="nick" placeholder="PILOT_ID" maxlength="12">
+                <br><br>
+                <button onclick="joinGame()">INITIALIZE ACCESS</button>
+            </div>
 
-        <div id="view-game" class="hidden">
-            <div id="points-notif" style="height:30px; font-family:Orbitron; color:var(--green)"></div>
-            <h2 id="question-txt" style="min-height:100px;">...</h2>
-            <div id="choices-box" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
+            <div id="view-lobby" class="hidden">
+                <h2 style="color:var(--neon); font-family: Orbitron;">SYSTEM READY</h2>
+                <p>Waiting for manual start command...</p>
+                <button id="start-btn" class="hidden" onclick="launchGame()">[ EXECUTE START PROTOCOL ]</button>
+            </div>
+
+            <div id="view-game" class="hidden">
+                <div id="points-notif"></div>
+                <h2 id="question-txt" style="min-height:100px; font-size: 1.4rem;">RECOVERING DATA...</h2>
+                <div id="choices-box" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;"></div>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="rank-side">
-    <h3 style="font-family:Orbitron; color:var(--pink); border-bottom:2px solid var(--pink); padding-bottom:10px;">LIVE RANKING</h3>
-    <div id="leaderboard"></div>
-</div>
+    <div id="rank-side">
+        <h3 style="font-family:Orbitron; color:var(--pink); border-bottom:2px solid var(--pink); padding-bottom:10px; letter-spacing: 2px;">LIVE RANKING</h3>
+        <div id="leaderboard"></div>
+    </div>
 
-<script>
-    const socket = io();
-    let currentCorrect = "";
-    let bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3");
-    bgMusic.loop = true;
-    bgMusic.volume = 0.15;
+    <script>
+        const socket = io();
+        let currentCorrect = "";
+        let music = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3");
+        music.loop = true; music.volume = 0.15;
 
-    function joinGame() {
-        const name = document.getElementById('nick').value || "PILOT";
-        socket.emit('joinGame', name);
-        bgMusic.play().catch(() => {});
-        document.getElementById('view-join').classList.add('hidden');
-        document.getElementById('view-lobby').classList.remove('hidden');
-    }
+        function joinGame() {
+            const name = document.getElementById('nick').value || "PILOT";
+            socket.emit('joinGame', name);
+            music.play().catch(() => {});
+            document.getElementById('view-join').classList.add('hidden');
+            document.getElementById('view-lobby').classList.remove('hidden');
+        }
 
-    function launchGame() {
-        console.log("Launch command sent");
-        socket.emit('startGameRequest');
-    }
+        function launchGame() {
+            socket.emit('startGameRequest');
+        }
 
-    socket.on('hostStatus', (isHost) => {
-        if(isHost) document.getElementById('start-btn').classList.remove('hidden');
-    });
-
-    socket.on('updateLobby', (players) => {
-        const lb = document.getElementById('leaderboard');
-        lb.innerHTML = players.map((p, i) => `
-            <div class="player-item">
-                <span>#${i+1} ${p.username} ${p.streak >= 3 ? '🔥' : ''}</span>
-                <span style="color:var(--neon)">${p.score}</span>
-            </div>
-        `).join('');
-    });
-
-    socket.on('gameStart', () => {
-        document.getElementById('view-lobby').classList.add('hidden');
-        document.getElementById('view-game').classList.remove('hidden');
-    });
-
-    socket.on('nextQuestion', (q) => {
-        currentCorrect = q.correct;
-        document.getElementById('points-notif').innerText = "";
-        document.getElementById('question-txt').innerText = q.text;
-        const box = document.getElementById('choices-box');
-        box.innerHTML = "";
-        q.choices.forEach(c => {
-            const b = document.createElement('button');
-            b.innerText = c;
-            b.onclick = () => {
-                const isOk = c.trim().toLowerCase() === currentCorrect.trim().toLowerCase();
-                socket.emit('submitAnswer', { isCorrect: isOk });
-                reveal(b);
-            };
-            box.appendChild(b);
+        socket.on('hostStatus', (isHost) => {
+            if(isHost) document.getElementById('start-btn').classList.remove('hidden');
         });
-    });
 
-    socket.on('feedback', (data) => {
-        const notif = document.getElementById('points-notif');
-        notif.innerText = data.correct ? `+${data.points} XP` : "-50 XP";
-        notif.style.color = data.correct ? "var(--green)" : "var(--pink)";
-    });
-
-    function reveal(clicked) {
-        document.querySelectorAll('#choices-box button').forEach(b => {
-            b.disabled = true;
-            if(b.innerText.trim().toLowerCase() === currentCorrect.trim().toLowerCase()) b.classList.add('correct');
-            else if(b === clicked) b.classList.add('wrong');
+        socket.on('updateLobby', (players) => {
+            const lb = document.getElementById('leaderboard');
+            lb.innerHTML = players.map((p, i) => `
+                <div class="player-item">
+                    <span>#${i+1} ${p.username} ${p.streak >= 3 ? '🔥' : ''}</span>
+                    <span style="color:var(--neon)">${p.score} XP</span>
+                </div>
+            `).join('');
         });
-    }
 
-    socket.on('timerUpdate', (t) => document.getElementById('timer-line').style.width = (t/15)*100 + "%");
-    socket.on('timeUp', (ans) => { if(ans) currentCorrect = ans; reveal(null); });
-</script>
+        socket.on('gameStart', () => {
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+        });
+
+        socket.on('nextQuestion', (q) => {
+            currentCorrect = q.correct;
+            document.getElementById('points-notif').innerText = "";
+            document.getElementById('question-txt').innerText = q.text;
+            const box = document.getElementById('choices-box');
+            box.innerHTML = "";
+            q.choices.forEach(c => {
+                const b = document.createElement('button');
+                b.innerText = c;
+                b.onclick = () => {
+                    const isOk = c.trim().toLowerCase() === currentCorrect.trim().toLowerCase();
+                    socket.emit('submitAnswer', { isCorrect: isOk });
+                    reveal(b);
+                };
+                box.appendChild(b);
+            });
+        });
+
+        socket.on('feedback', (data) => {
+            const notif = document.getElementById('points-notif');
+            if(data.correct) {
+                notif.innerText = `+${data.points} XP ${data.streak >= 3 ? 'STREAK!' : ''}`;
+                notif.style.color = "var(--green)";
+            } else {
+                notif.innerText = "WRONG DATA / STREAK LOST";
+                notif.style.color = "var(--pink)";
+            }
+        });
+
+        function reveal(clicked) {
+            document.querySelectorAll('#choices-box button').forEach(b => {
+                b.disabled = true;
+                if(b.innerText.trim().toLowerCase() === currentCorrect.trim().toLowerCase()) {
+                    b.classList.add('correct');
+                } else if(b === clicked) {
+                    b.classList.add('wrong');
+                }
+            });
+        }
+
+        socket.on('timerUpdate', (t) => document.getElementById('timer-line').style.width = (t/15)*100 + "%");
+        socket.on('timeUp', (ans) => { if(ans) currentCorrect = ans; reveal(null); });
+        
+        socket.on('gameRestarted', () => window.location.reload());
+    </script>
 </body>
 </html>
