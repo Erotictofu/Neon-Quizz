@@ -18,6 +18,7 @@ function resetServerState() {
     questionCount = 0;
     currentQuestion = null;
     io.emit('gameRestarted');
+    console.log("Système réinitialisé.");
 }
 
 async function nextQuestion() {
@@ -52,7 +53,10 @@ async function nextQuestion() {
                 setTimeout(nextQuestion, 3500);
             }
         }, 1000);
-    } catch (e) { resetServerState(); }
+    } catch (e) { 
+        console.error("Erreur API, reboot...");
+        resetServerState(); 
+    }
 }
 
 io.on('connection', (socket) => {
@@ -60,6 +64,7 @@ io.on('connection', (socket) => {
         players[socket.id] = { username: name, score: 0, streak: 0 };
         socket.emit('hostStatus', true); 
         io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
+        console.log(`${name} a rejoint la session.`);
     });
 
     socket.on('startGameRequest', () => {
@@ -86,8 +91,23 @@ io.on('connection', (socket) => {
             p.score += pts;
             socket.emit('feedback', { correct: true, points: pts, streak: p.streak });
         } else {
-            // PLUS DE PERTE D'XP ICI
             p.streak = 0; 
             socket.emit('feedback', { correct: false, points: 0, streak: 0 });
         }
-        io.emit('updateLobby', Object.values(players).
+        io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
+    });
+
+    socket.on('disconnect', () => {
+        delete players[socket.id];
+        if (Object.keys(players).length === 0) {
+            resetServerState();
+        } else {
+            io.emit('updateLobby', Object.values(players).sort((a,b) => b.score - a.score));
+        }
+    });
+});
+
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, '0.0.0.0', () => {
+    console.log(`>>> PROTOCOLE NEON CONNECTÉ SUR PORT ${PORT}`);
+});
